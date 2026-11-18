@@ -1,0 +1,15 @@
+{
+  "name": "yundao",
+  "version": "1.0.0",
+  "private": true,
+  "description": "云岛：给 AI 伴侣用的记忆库和聊天后端，零依赖（只用 Node 自带的模块）",
+  "type": "module",
+  "main": "backend.mjs",
+  "scripts": {
+    "start": "node backend.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

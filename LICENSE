@@ -1,0 +1,24 @@
+云岛（Cloud-Island）使用许可
+
+版权所有 (c) 2026 White-ting
+
+本许可管公开在 GitHub（https://github.com/White-ting/Cloud-Island）的版本和以后作者发出的版本。
+
+1. 可以：
+   - 自己部署、自己用；
+   - 为了自己用而修改。
+
+2. 不可以：
+   - 把原样的或改过的（代码、说明、压缩包）转给别人，或上传、发布到别的地方（网盘、群文件、别的仓库、帖子附件等）。
+     想分享，请直接给仓库地址 https://github.com/White-ting/Cloud-Island 。
+   - 在 GitHub 上 Fork 本仓库是 GitHub 用户协议允许的，但 Fork 只用来跟进更新或给本仓库提修改建议（Pull Request），
+     不得在 Fork 里发布改过的版本给别人用。
+
+3. 商用：未经作者同意，不得用于商业用途，包括收费帮人搭。
+
+4. 第三方部分：照它们各自的许可，不受上面第 2、3 条限制，详见 NOTICE.md：
+   - web/ 下的霞鹜文楷字体（SIL Open Font License 1.1，全文 web/LXGW-WenKai-OFL.txt）和它的网页切片、样式表
+     （MIT，全文 web/lxgw-wenkai-webfont-LICENSE-MIT.txt）；
+   - 记忆召回打分的思路来自 Ombre Brain（MIT），这里是重写的，没有拷原来的代码。
+
+5. 不提供任何担保：按原样提供，使用中出现的问题由使用者自己承担。

@@ -1,0 +1,6 @@
+# 你自己的设置和数据：不进仓库
+.env
+data/
+*.log
+node_modules/
+.DS_Store
