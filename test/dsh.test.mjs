@@ -17,13 +17,13 @@ async function until(f, ms = 3000) { const t0 = Date.now(); for (;;) { const v =
 function tmp() { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'yd-dsh-')); dirs.push(d); return d; }
 
 // 一套：数据目录、dsh home、工作目录、一个 TA 的设置
-function setup({ limits = {}, dsh = {} } = {}) {
+function setup({ limits = {}, dsh = {}, now } = {}) {
   const root = tmp();
   const ws = path.join(root, 'ws');
   fs.mkdirSync(ws);
   const conf = cleanDsh({ id: 'd', name: '小 d', kind: 'dsh', dsh: { home: path.join(root, 'home'), workspace: ws, bin: FAKE, keyEnv: 'FAKE_KEY', env: { EXTRA: 'e1' }, ...dsh } });
   const logs = [];
-  const m = openDsh({ dir: path.join(root, 'data'), keyOf: (k) => (k === 'FAKE_KEY' ? SECRET : ''), log: (...a) => logs.push(a.join(' ')), limits: { ...FAST, ...limits } });
+  const m = openDsh({ dir: path.join(root, 'data'), keyOf: (k) => (k === 'FAKE_KEY' ? SECRET : ''), log: (...a) => logs.push(a.join(' ')), limits: { ...FAST, ...limits }, ...(now ? { now } : {}) });
   const fakeLog = () => { try { return fs.readFileSync(path.join(conf.dsh.home, 'fake-log.jsonl'), 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
   return { root, conf, m, logs, fakeLog };
 }
@@ -139,7 +139,7 @@ test('启动 + 发话：懒启动、握手、回执先到也认、思考和正�
     const ps = fakeLog().filter((x) => x.prompt);
     assert.equal(ps[0].prompt.sid, ps[1].prompt.sid);
     assert.equal(fakeLog().filter((x) => x.req === 'session/resume').length, 0);
-    assert.deepEqual(m.state('d'), { kind: 'dsh', session: ps[0].prompt.sid, used: true, alive: true, busy: false });
+    assert.deepEqual(m.state('d'), { kind: 'dsh', session: ps[0].prompt.sid, used: true, perm: 'workspace-write', alive: true, busy: false });
 
     // 多步：说一句、跑工具、再说一句
     const r3 = await say(m, conf, '多步');
@@ -281,4 +281,99 @@ test('出错的一轮报错；新会话换编号、不再 resume；dsh 找不到
     for (const f of walk(path.join(root, 'data'))) assert.ok(!fs.readFileSync(f, 'utf8').includes(SECRET), f);
     for (const f of walk(conf.dsh.home).filter((f) => !f.endsWith('fake-log.jsonl'))) assert.ok(!fs.readFileSync(f, 'utf8').includes(SECRET), f);
   } finally { await m.closeAll(); }
+});
+
+test('换权限：旧会话 resume 时带 permissionMode，再拨 /permission；dsh 说成功才发，确认不了就不发、要她开新会话', async () => {
+  const { conf, m, fakeLog } = setup();
+  try {
+    await say(m, conf, '你好');
+    assert.equal(m.state('d').perm, 'workspace-write');
+    const ro = { ...conf, dsh: { ...conf.dsh, permission: 'read-only' } };
+    const r1 = await say(m, ro, '随便说点');
+    assert.equal(r1.done.type, 'done');
+    const resume = fakeLog().filter((x) => x.req === 'session/resume').at(-1);
+    assert.equal(resume.params.permissionMode, 'read-only');
+    assert.ok(fakeLog().some((x) => x.req === 'session/query' && x.params.contentBlocks[0].text === '/permission read-only'));
+    assert.equal(m.state('d').perm, 'read-only');
+    // dsh 回「没成功」：这一句不发
+    const bad = { ...conf, dsh: { ...conf.dsh, permission: 'workspace-write', env: { EXTRA: 'e1', FAKE_PERM_FAIL: '1' } } };
+    const n = fakeLog().filter((x) => x.prompt).length;
+    const r2 = await say(m, bad, '不该发出去');
+    assert.deepEqual([r2.done.type, r2.done.status], ['error', 409]);
+    assert.match(r2.done.msg, /新会话/);
+    assert.equal(fakeLog().filter((x) => x.prompt).length, n);
+    assert.equal(m.state('d').perm, 'read-only');
+    // 新会话：按设置的权限起，不用拨
+    m.reset('d');
+    const r3 = await say(m, bad, '你好');
+    assert.equal(r3.done.type, 'done');
+    assert.equal(m.state('d').perm, 'workspace-write');
+  } finally { await m.closeAll(); }
+});
+
+test('确认要对得上：别的会话、没调用编号、工具名不对、参数太长显示不全：都直接拒绝，不发给前端；这一轮说明里写上', async () => {
+  const { conf, m, fakeLog } = setup({ limits: { approvalMs: 2000 } });
+  try {
+    for (const w of ['别的会话', '没编号', '工具不对', '长参数']) {
+      const r = await say(m, conf, w);
+      assert.ok(!r.ev.some((e) => e.type === 'approval'), w);
+      assert.equal(r.done.type, 'done', w);
+      assert.match(r.done.msg, /拒绝/, w);
+      assert.equal(r.saved[0].text, '完了');
+    }
+    await until(() => fakeLog().filter((x) => x.approval).length >= 4);
+    assert.deepEqual(fakeLog().filter((x) => x.approval).map((x) => x.approval.outcome), ['rejected', 'rejected', 'rejected', 'rejected']);
+  } finally { await m.closeAll(); }
+});
+
+test('确认过了截止时间：批也不放行（定时器晚到也一样）', async () => {
+  let t = 1e12;
+  const { conf, m, fakeLog } = setup({ limits: { approvalMs: 60e3 }, now: () => t });
+  try {
+    const r = await say(m, conf, '建文件', { during: async (rr) => {
+      const a = await rr.waitFor((e) => e.type === 'approval');
+      t += 61e3;
+      assert.throws(() => m.approve('d', a.id, true), (e) => e.code === 404);
+    } });
+    assert.ok(r.ev.some((e) => e.type === 'approval_end' && e.outcome === 'timeout'));
+    await until(() => fakeLog().some((x) => x.approval));
+    assert.equal(fakeLog().find((x) => x.approval).approval.outcome, 'rejected');
+  } finally { await m.closeAll(); }
+});
+
+test('dsh 说出了 key：回复、思考、工具参数（连键名）和结果里都换成 ***，返回和存盘都没有', async () => {
+  const { conf, m } = setup();
+  try {
+    const r = await say(m, conf, '泄露');
+    const all = JSON.stringify([r.ev, r.saved]);
+    assert.ok(!all.includes(SECRET));
+    assert.match(r.saved[0].text, /key 是 \*\*\*/);
+    assert.deepEqual(r.saved[0].steps[0].input, { command: 'echo ***', env: { '***': 1 } });
+    assert.equal(r.saved[0].steps[0].out, 'out ***');
+  } finally { await m.closeAll(); }
+});
+
+test('一轮的上限：一行太长、这一轮输出太多、整轮超时：停下、关进程、告诉她这一轮没完成；下一句照常', async () => {
+  for (const [w, limits] of [['刷屏', { frame: 100000 }], ['话多', { turnBytes: 200000 }], ['慢慢说', { turnMs: 300 }]]) {
+    const { conf, m } = setup({ limits });
+    try {
+      const r = await say(m, conf, w);
+      assert.equal(r.done.type, 'done', w);
+      assert.equal(r.done.cut, true, w);
+      assert.match(r.done.msg, /没完成/, w);
+      assert.equal(r.saved[0].cut, true);
+      assert.ok(await until(() => !m.state('d').alive), w);
+      const r2 = await say(m, conf, '你好');
+      assert.equal(r2.done.type, 'done', w);
+    } finally { await m.closeAll(); }
+  }
+});
+
+test('keyEnv、env：后端自己的口令和设置都不许用', () => {
+  for (const k of ['HOOK_TOKEN', 'WEB_PASSWORD', 'SESSION_SECRET', 'TRANSLATE_KEY', 'GATEWAY_KEY', 'BARK_AES', 'NIGHT_API_KEY', 'EMBED_KEY']) {
+    assert.throws(() => cleanDsh({ id: 'x', dsh: { home: '/h', workspace: '/w', keyEnv: k } }), /不能用/, k);
+    assert.throws(() => cleanDsh({ id: 'x', dsh: { home: '/h', workspace: '/w', env: { [k]: 'v' } } }), /不能写/, k);
+  }
+  assert.equal(cleanDsh({ id: 'x', dsh: { home: '/h', workspace: '/w', turnMinutes: 5 } }).dsh.turnMinutes, 5);
+  assert.throws(() => cleanDsh({ id: 'x', dsh: { home: '/h', workspace: '/w', turnMinutes: 0 } }), /turnMinutes/);
 });

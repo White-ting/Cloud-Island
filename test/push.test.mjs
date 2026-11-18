@@ -11,6 +11,7 @@ import { openStore } from '../lib/store.mjs';
 import { createServer } from '../lib/server.mjs';
 import { openSvc } from '../lib/svc.mjs';
 import { openPush, PRESENCE_FRESH } from '../lib/push.mjs';
+import { makeNet } from '../lib/net.mjs';
 
 const dirs = [];
 afterAll(() => { for (const d of dirs) fs.rmSync(d, { recursive: true, force: true }); });
@@ -63,10 +64,11 @@ async function setup({ env = {} } = {}) {
   });
   await new Promise((ok) => up.server.listen(0, '127.0.0.1', ok));
   const base = `http://127.0.0.1:${up.server.address().port}`;
-  const store = openStore({ dir, now }), svc = openSvc({ dir });
+  const net = makeNet({ allow: 'http://127.0.0.1' }); // 假的 Bark 在本机：像管理员在 ALLOW_URLS 里放行了一样
+  const store = openStore({ dir, now }), svc = openSvc({ dir, net });
   const logs = [];
   const mk = () => openPush({ dir, svc, env, now, nameOf: (ai) => (ai === 'o' ? '小O' : ai), log: (...a) => logs.push(a.join(' ')),
-    okHost: (h) => h === '127.0.0.1', allowHttp: true });
+    okHost: (h) => h === '127.0.0.1', allowHttp: true, net });
   const push = mk();
   const srv = createServer({ cfg: { port: 0 }, store, svc, push });
   const { port } = await srv.listen();
@@ -245,4 +247,45 @@ test('没传 push：这几个地址回 404', async () => {
       assert.equal(r.status, 404, p);
     }
   } finally { await srv.close(); }
+});
+
+test('推送边界：发之前再核一遍订阅地址（恢复的旧文件里的坏地址不发）；推送服务回跳转不跟；默认只许 443 端口', async () => {
+  const g = await setup();
+  try {
+    const b = fakeBrowser(g.base + '/push/a');
+    await g.call('POST', '/api/push/sub', b.sub);
+    // 手改的订阅文件：多一条不是推送服务的地址
+    const f = path.join(g.dir, 'push', 'subs.json');
+    const list = JSON.parse(fs.readFileSync(f, 'utf8'));
+    list.push({ ...list[0], endpoint: 'http://10.0.0.1:8080/x' });
+    fs.writeFileSync(f, JSON.stringify(list));
+    g.up.status = (r) => (r.url === '/push/a' ? 301 : 201);
+    const n = g.up.seen.length;
+    const r = await g.push.notify('o', { kind: 'test', force: true });
+    assert.deepEqual([r.web.sent, r.web.failed], [0, 2]);
+    assert.equal(g.up.seen.length - n, 1); // 只敲了一次，跳转没跟、坏地址没发
+    const real = openPush({ dir: g.dir });
+    assert.throws(() => real.addSub({ endpoint: 'https://web.push.apple.com:8443/abc', keys: b.sub.keys }), /endpoint/);
+  } finally { await g.close(); }
+});
+
+test('两边各发各的：Bark 抛错不耽误网页推送；加密钥匙按字节算（手改成 32 个汉字也不会抛）', async () => {
+  const g = await setup();
+  try {
+    const b = fakeBrowser(g.base + '/push/a');
+    await g.call('POST', '/api/push/sub', b.sub);
+    g.svc.putPush({ route: 'both', bark: { url: g.base, dev: 'DEV123456789' } });
+    const f = path.join(g.dir, 'svc.json'), d = JSON.parse(fs.readFileSync(f, 'utf8'));
+    d.push.bark.aes = '云'.repeat(32); // 手改坏的钥匙：字数对、字节数不对
+    fs.writeFileSync(f, JSON.stringify(d));
+    let r = await g.push.notify('o', { kind: 'test', force: true });
+    assert.equal(r.web.sent, 1);
+    assert.match(r.bark.skip, /32 个字节/);
+    // Bark 那边直接抛错（比如 fetch 本身坏了）：网页推送照样发
+    const p2 = openPush({ dir: g.dir, svc: g.svc, okHost: (h) => h === '127.0.0.1', allowHttp: true, net: makeNet({ allow: 'http://127.0.0.1' }),
+      fetchFn: async (u, o) => { if (!String(u).includes('/push/')) throw new Error('boom'); return fetch(u, o); } });
+    d.push.bark.aes = ''; fs.writeFileSync(f, JSON.stringify(d));
+    r = await p2.notify('o', { kind: 'test', force: true });
+    assert.deepEqual([r.web.sent, r.bark.status], [1, 0]);
+  } finally { await g.close(); }
 });

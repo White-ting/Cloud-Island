@@ -17,6 +17,7 @@ import { openDigest } from '../lib/digest.mjs';
 import { openDiary } from '../lib/diary.mjs';
 import { openPat } from '../lib/pat.mjs';
 import { makeHelper } from '../lib/helper.mjs';
+import { makeNet } from '../lib/net.mjs';
 import { makeMcp } from '../lib/mcp.mjs';
 import { makeNight, DIARY_PROMPT, TIDY_PROMPT, DREAM_PROMPT } from '../lib/night.mjs';
 
@@ -29,7 +30,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const dirs = [];
 afterAll(() => { for (const d of dirs) fs.rmSync(d, { recursive: true, force: true }); }); // 自己建的临时目录自己清
 
-function fresh({ reply = '{}' } = {}) {
+function fresh({ reply = '{}', keyOrigins = '' } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ta-dg-'));
   dirs.push(dir);
   const clock = { t: local(2026, 11, 15, 20) };
@@ -39,7 +40,7 @@ function fresh({ reply = '{}' } = {}) {
   const digest = openDigest({ store: s }), diary = openDiary({ store: s }), pat = openPat({ store: s });
   const logs = [];
   const log = (...a) => logs.push(a.join(' '));
-  const helper = makeHelper({ store: s, digest, keyOf: (n) => (n === 'HELPER_KEY' ? SECRET : ''), log, timeout: 2000 });
+  const helper = makeHelper({ store: s, digest, keyOf: (n) => (n === 'HELPER_KEY' ? SECRET : ''), log, timeout: 2000, net: makeNet({ allow: 'http://127.0.0.1' }), keyOrigins });
   const h = makeHooks({ store: s, tz: TZ, persona, dreams, digest, diary, pat, helper });
   const seen = [], fake = { reply };
   const runner = async (x) => { seen.push(x); return typeof fake.reply === 'function' ? fake.reply(x) : fake.reply; };
@@ -172,7 +173,6 @@ test('散场记（钩子）：她说过话才问，问过一次后没新对话�
 });
 
 test('旁听的小模型：默认关；改设置要口令、key 只存变量名、不给网页看地址和变量名；打开后散场记回 null、由它读原文写一条 by:helper；拒绝/出错/回空跳过，日志不带原文', async () => {
-  const g = fresh();
   const seen = [];
   const up = { reply: (res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: '她说想去看海，我听着也想去。' } }] })); } };
   const srv0 = http.createServer((req, res) => {
@@ -182,6 +182,7 @@ test('旁听的小模型：默认关；改设置要口令、key 只存变量名�
   });
   await new Promise((ok) => srv0.listen(0, '127.0.0.1', ok));
   const base = `http://127.0.0.1:${srv0.address().port}`;
+  const g = fresh({ keyOrigins: 'HELPER_KEY=' + base }); // 11-19：旁听用的 Key 要在 .env 的 HELPER_KEY_ORIGINS 登记能发到哪
   const srv = createServer({ cfg: { port: 0, hookToken: 'tok' }, store: g.s, hooks: g.h, helper: g.helper });
   const { port } = await srv.listen();
   const call = async (method, p, body, headers = {}) => {
@@ -190,12 +191,15 @@ test('旁听的小模型：默认关；改设置要口令、key 只存变量名�
   };
   try {
     assert.deepEqual((await call('GET', '/api/helper/a')).body, { on: false, model: '', local: null, key: false, talk: true });
-    assert.equal((await call('PUT', '/api/helper/a', { on: true })).code, 401);
-    const T = { authorization: 'Bearer tok' };
+    // 11-18 起：网页里改（跟别的设置一样），HOOK_TOKEN 不再需要、也不算数
+    const T = {};
     assert.equal((await call('PUT', '/api/helper/a', { on: true }, T)).code, 400); // 没填地址和模型
     assert.equal((await call('PUT', '/api/helper/a', { keyEnv: SECRET }, T)).code, 400); // 不是变量名
-    assert.equal((await call('PUT', '/api/helper/a', { keyEnv: 'HOOK_TOKEN' }, T)).code, 400); // 后端自己的口令
+    for (const k of ['HOOK_TOKEN', 'WEB_PASSWORD', 'SESSION_SECRET', 'TRANSLATE_KEY']) assert.equal((await call('PUT', '/api/helper/a', { keyEnv: k }, T)).code, 400, k); // 后端自己的口令
+    assert.equal((await call('PUT', '/api/helper/a', { url: 'http://10.0.0.8:8000' }, T)).code, 400); // 没放行的私网地址
     assert.equal((await call('PUT', '/api/helper/a', { url: base + '/?key=x' }, T)).code, 400);
+    // 登记过的 Key 换一个没登记的地址（同一台机器另一个端口也算另一个地址）：不让打开
+    assert.equal((await call('PUT', '/api/helper/a', { on: true, url: 'http://127.0.0.1:1', model: 'qwen-small', keyEnv: 'HELPER_KEY' }, T)).code, 400);
     const r = await call('PUT', '/api/helper/a', { on: true, url: base, model: 'qwen-small', keyEnv: 'HELPER_KEY' }, T);
     assert.deepEqual(r.body, { on: true, model: 'qwen-small', local: true, key: true, talk: true });
     // 打开后：散场记回 null，旁听的那个去写

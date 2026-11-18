@@ -1,10 +1,12 @@
 # 接口：dsh 的 TA（DeepSeek Harness）
 
-名单（`data/ais.json`）里除了走 API 的 TA，还可以有一种 `kind: "dsh"` 的 TA：后端在这台电脑上拉起 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（命令叫 `dsh`，DeepSeek 官方开源的智能体，MIT），把她说的话交给 dsh 的会话。dsh 的回复、跑了什么工具一边出一边传回前端；dsh 要做越权的事（比如写工作目录外面的文件）会先问，问题转给前端，她点允许或拒绝。
+名单（`data/ais.json`）里除了走 API 的 TA，还可以有一种 `kind: "dsh"` 的 TA：后端在这台电脑上拉起 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（命令叫 `dsh`，DeepSeek 官方开源的智能体，MIT），把她说的话交给 dsh 的会话。dsh 的回复、跑了什么工具一边出一边传回前端；dsh 要做超出权限的事（比如写工作目录外面的文件）时会发起确认，确认转给前端，她点允许或拒绝。
 
 代码在 `lib/dsh.mjs`（只用 Node 自带的模块），测试 `test/dsh.test.mjs`（用 `test/fixtures/fake-dsh.mjs` 当 dsh，不需要装真的）。
 
-> **安全提醒**：dsh 能读写文件、跑命令、上网。给它**单独一个工作目录**，别指向放着私人资料的文件夹；dsh home 也单独一个。默认权限 `workspace-write`：只能写工作目录（和系统临时目录），别的要先问她。
+> **安全提醒**：dsh 能读写文件、跑命令、上网。给它**单独一个工作目录**，别指向放着私人资料的文件夹；dsh home 也单独一个。默认权限 `workspace-write`：工作目录（和系统临时目录）里写文件、跑命令不问就做；要超出这个权限时，运行时才发起确认。不是「每一步都先问」。
+>
+> 这一项只能由这台电脑的管理员手写 `data/ais.json`：网页和接口（`PUT /api/ais`）都改不了名单，`HOOK_TOKEN` 也不行（拉起什么程序、带什么环境变量、在哪个目录跑，都在这份名单里）。
 
 ---
 
@@ -16,8 +18,8 @@ dsh 的 SDK 模式：`dsh --profile sdk` 在 stdin/stdout 上说**一行一条**
 |---|---|---|
 | 我们 → dsh | `initialize` | `{ cwd, provider, model, approvalRequests: true, reasoningEffort?, maxTokens? }` → `{ serverInfo: { name: "deepseek-harness-sdk-runtime" } }`。这一步会等插件全部装载好，第一次启动要几秒 |
 | 我们 → dsh | `session/prompt` | `{ sessionId, contentBlocks }` → `{ messageId }`（只是「排上队了」的回执，不是回复）。会话 id 由我们定，第一次用就新建 |
-| 我们 → dsh | `session/resume` | `{ sessionId, permissionMode? }` → `{}`。换了进程以后接回存在 dsh home 里的旧会话；被打断的那一轮 dsh 自己补好 |
-| 我们 → dsh | `session/query` | 跟 prompt 一样，但认 `/permission <预设>` 这类命令。用来改一个会话的权限 |
+| 我们 → dsh | `session/resume` | `{ sessionId, permissionMode? }` → `{}`。换了进程以后接回存在 dsh home 里的旧会话；被打断的那一轮 dsh 自己补好。我们每次都带上设置里的 `permissionMode` |
+| 我们 → dsh | `session/query` | 跟 prompt 一样，但认 `/permission <预设>` 这类命令。用来改一个会话的权限；回 `{ kind: "command", execution: { result: { kind: "success" } } }` 才算改成了 |
 | 我们 → dsh | `shutdown` | 收拾干净后退出（退出码 0） |
 | dsh → 我们（请求） | `approval/request` | `{ sessionId, toolName, callId?, reason? }`，要回 `{ outcome: "allowed-once" \| "rejected" \| "cancelled" }`。只有 `allowed-once` 是放行，而且只放这一次 |
 | dsh → 我们（通知） | `session.event` | `{ sessionId, event: { type, data } }`：会话里记下的每件事。用到的：`agent/inbox/spliced`（她那句进了会话，`data.inserted[].id` 对上 messageId）、`assistant/message`（整段回复，`content` 里有 `text` 和 `reasoning`）、`tool/call`（`callId, name, arguments`）、`tool/result`（`message.toolCallId, isError, content`）、`turn/end`（`reason.kind`：completed / error / aborted / max-tokens…） |
@@ -65,21 +67,24 @@ dsh 的 SDK 模式：`dsh --profile sdk` 在 stdin/stdout 上说**一行一条**
 | `bin` | | `dsh` | 命令名（在 PATH 里找）或绝对路径。写的是 `.js`/`.mjs`（比如 `…/node_modules/@deepseek-ai/dsh/lib/bin.js`）就用 `node` 跑它 |
 | `node` | | 后端自己的 node | `bin` 是 `.js` 时用哪个 node 跑（dsh 要 Node ≥ 24.9，后端可以是旧一点的 node） |
 | `profile` | | `sdk` | dsh 的 profile |
-| `permission` | | `workspace-write` | `read-only` / `workspace-write` / `danger-full-access`（后者不问就做，别用） |
+| `permission` | | `workspace-write` | `read-only` / `workspace-write` / `danger-full-access`（后者不问就做，别用）。改了以后，旧会话要 dsh 明确回「改成了」才接着用，确认不了就不发、提示点「新会话」（见下面「换权限」） |
 | `provider` | | `deepseek-official` | 模型路由名。用官方 DeepSeek 就不用写 `providers`，key 放环境变量 `DEEPSEEK_API_KEY`，`keyEnv` 写 `"DEEPSEEK_API_KEY"` |
 | `model` | | `deepseek-v4-flash` | 模型 id |
 | `reasoningEffort` / `maxTokens` | | 模型默认 | 原样交给 `initialize` |
 | `providers` | | | 自定义提供商（OpenAI 兼容的中转、硅基流动这类），原样写进 dsh 的 `llm-pi-ai` 配置。**key 不许写在这里**（写 `apiKey`、`key`、`token`、`headers` 这类字段会被拒绝），只写 `apiKeyEnv` |
-| `keyEnv` | | | 要交给 dsh 的 key 的**环境变量名**（一个或数组）。值在拉起进程时从后端的环境 / `.env` 取，只放进 dsh 进程的环境 |
+| `keyEnv` | | | 要交给 dsh 的 key 的**环境变量名**（一个或数组）。值在拉起进程时从后端的环境 / `.env` 取，只放进 dsh 进程的环境。不能用后端自己的那些名字（`HOOK_TOKEN`、`WEB_PASSWORD`、`SESSION_SECRET`、`GATEWAY_KEY`、`TRANSLATE_KEY`、`EMBED_KEY`、`NIGHT_API_KEY`、`BARK_*` 等，全表在 `lib/dsh.mjs` 的 `OURS`） |
 | `env` | | | 别的不是秘密的环境变量（如 `TZ`）。不能写 `DSH_HOME` 这些由后端定的 |
 | `uploadLog` | | `false` | 见下面「为什么关日志上传」 |
 | `telemetry` | | `false` | 开 dsh 的 OTel 反馈上传 |
 | `approvalTimeout` | | `300` | 确认多少秒没回当拒绝（10–3600） |
 | `idleMinutes` | | `30` | 闲了多少分钟关掉 dsh 进程省内存，下一句再起（0 = 不关） |
+| `turnMinutes` | | `30` | 一轮最多跑多少分钟（1–1440）。到点还没完就停下这一轮、关掉进程，告诉她这一轮没完成 |
 
 给前端的名单（`GET /api/ais` 那份）里，dsh 的 TA 长这样：`{ id, name, avatar?, kind: "dsh", model, permission, notes: false }`。前端靠 `kind === "dsh"` 显示「新会话」按钮、藏掉「重新生成」。
 
 后端带给 dsh 进程的环境只有：系统路径、用户目录、语言时区、代理（`HTTP(S)_PROXY`、`NO_PROXY`）、证书（`NODE_EXTRA_CA_CERTS` 等），加上 `env`、`keyEnv` 和 `DSH_*` 几个。后端自己的口令（`HOOK_TOKEN` 等）不给。
+
+dsh 拿到的 key 它自己（和它跑的命令）都看得到。它要是把 key 原样说出来（回复、思考、工具参数和结果、确认的理由），后端交给前端和存盘之前换成 `***`；这只是补救，不是隔离。
 
 ## 3. 给前端的接口
 
@@ -94,10 +99,21 @@ dsh 的 SDK 模式：`dsh --profile sdk` 在 stdin/stdout 上说**一行一条**
 | `{ type: "delta", text }` | 一段正文（整段来，不是一个字一个字） |
 | `{ type: "step", i, kind: "tool", name, input }` | 开始跑一个工具（`input` 是参数，比如 `{ file_path, content }`、`{ command }`） |
 | `{ type: "step_end", i, ok, out? }` | 第 `i` 步跑完；`ok: false` 是失败或被拒；`out` 是结果，最多 2000 字 |
-| `{ type: "approval", id, tool, reason?, i?, input?, t, until, timeout }` | **dsh 问「这一步行不行」**。`i` 对上哪一步（有的话），`until` 是到期时间（毫秒时间戳），`timeout` 是毫秒数。前端弹出允许 / 拒绝 |
+| `{ type: "approval", id, tool, reason?, i, input, t, until, timeout }` | **dsh 问「这一步行不行」**。`i` 是哪一步，`input` 是这一步完整的参数，`until` 是到期时间（毫秒时间戳），`timeout` 是毫秒数。前端弹出允许 / 拒绝 |
 | `{ type: "approval_end", id, outcome }` | 这个确认结束了：`allowed` / `rejected` / `timeout`（超时当拒绝） / `cancelled`（这一轮停了） |
-| `{ type: "done", id, me, cut?, msg? }` | 完了。`id` 是存下的 TA 那句；`cut: true` 是被打断（停、进程挂了、出错）；`msg` 是补一句说明（比如「到了输出上限」） |
-| `{ type: "error", status, msg, me }` | 没回成（一点内容都没有就出错了）。`status` 409：同一个 dsh home 被两个 TA 用了 / 接不上旧会话（点新会话） |
+| `{ type: "done", id, me, cut?, msg? }` | 完了。`id` 是存下的 TA 那句；`cut: true` 是被打断（停、进程挂了、出错、超了上限）；`msg` 是补一句说明（比如「到了输出上限」「这一轮没完成」「有一步参数太长，直接拒绝了」） |
+| `{ type: "error", status, msg, me }` | 没回成（一点内容都没有就出错了）。`status` 409：同一个 dsh home 被两个 TA 用了 / 接不上旧会话 / 换了权限但确认不了（点新会话） |
+
+**确认要对得上才会弹给她**。下面有一样不对，后端直接回 dsh「拒绝」，不弹窗，`done.msg` 里说一句：
+
+- 确认的 `sessionId` 不是这一轮的会话（比如 dsh 自己开的子任务）；
+- 没有 `callId`，或者 1 秒内对不上这一轮登记过的工具调用；
+- `toolName` 跟那一步的工具名不一样；
+- 那一步的参数超过 64000 字，显示不全（不让她盲批）。
+
+**一轮的上限**：dsh 的一行输出（一条协议帧）最多 16 MB、一轮累计最多 64 MB、整轮最多 `turnMinutes` 分钟。超了就取消还在等的确认、关掉 dsh 进程，`done` 带 `cut: true` 和「这一轮没完成」的说明（一点内容都没有时是 `error`）。下一句照常拉起、接回会话。
+
+**换权限**：旧会话（发过话的）的权限跟设置里的不一样时，`session/resume` 带上新的 `permissionMode`，再用 `/permission <新权限>` 拨一次；dsh 回「命令成功」才发她这一句，没回成功（拒绝、出错、被当成一句话）就回 409，让她点「新会话」——新会话按设置的权限起（`DSH_PERMISSION_MODE`）。
 
 存进 `chat.jsonl` 的 TA 消息：`{ id, role: "ai", t, text, think?, steps?, cut?, dsh: { session } }`，`steps[i]` 多了 `ok`、`out`、`approval`（`allowed` / `rejected` / `timeout` / `cancelled`）。
 
@@ -105,7 +121,9 @@ dsh 的 SDK 模式：`dsh --profile sdk` 在 stdin/stdout 上说**一行一条**
 
 请求体 `{ "id": "ap…", "allow": true }`。`allow` 只有严格等于 `true` 才是允许（只放行这一次），别的都是拒绝。
 
-回 `{ ok: true, outcome: "allowed" | "rejected" }`；确认不存在（超时了、答过了、这一轮停了）回 404。结果同时会从发话那条 SSE 里出一个 `approval_end`。
+回 `{ ok: true, outcome: "allowed" | "rejected" }`；确认不存在（超时了、答过了、这一轮停了）回 404。批的时候再看一眼截止时间，过了就当超时（404），不放行。结果同时会从发话那条 SSE 里出一个 `approval_end`。
+
+这个接口跟发话一样是网页用的：开了网页口令要登录，没开只许这台电脑自己；`HOOK_TOKEN` 不算数。
 
 ### 还在等的确认：`GET /api/chat/:ai/approvals`
 
@@ -121,7 +139,7 @@ dsh 的 SDK 模式：`dsh --profile sdk` 在 stdin/stdout 上说**一行一条**
 
 ### 状态：`GET /api/chat/:ai/dsh`
 
-回 `{ kind: "dsh", session, used, alive, busy }`：现在续的会话、发过话没有、dsh 进程在不在、是不是正在回。
+回 `{ kind: "dsh", session, used, perm, alive, busy }`：现在续的会话、发过话没有、这个会话在 dsh 那边确认过的权限（不是设置里写的那个；还没发过话是 `null`）、dsh 进程在不在、是不是正在回。
 
 ### 不支持的（这一版）
 
@@ -243,15 +261,16 @@ key 用的是现成的 `cfg.keyOf`（环境变量 + `.env`），不用另加配�
    ```
 
    （对这个 home 下所有 profile 都管用，包括你自己另外开的 `dsh web`），`--patch` 覆盖层里也再写一遍。想打开就在 TA 设置里写 `"uploadLog": true`，后端会拿掉自己写的那段，别的不动。OTel 反馈上传同样默认关（`DSH_TELEMETRY_DISABLED=1`），要开写 `"telemetry": true`。
-6. **安全**：dsh 能读写文件、跑命令、上网。工作目录单独一个；权限保持 `workspace-write`（写工作目录外、要更大权限时它会先问，前端弹窗）；别用 `danger-full-access`。确认 5 分钟没回当拒绝。
+6. **安全**：dsh 能读写文件、跑命令、上网。工作目录单独一个；权限保持 `workspace-write`（工作目录里的事不问；写工作目录外、要更大权限时运行时发起确认，前端弹窗）；别用 `danger-full-access`。确认 5 分钟没回当拒绝。
+7. **备份**：dsh 的会话存在 `home` 里，不在 `DATA_DIR`。只备份 `data/` 的话恢复后接不上旧会话（只能开新会话）；`home` 要单独备份，工作目录里想留的东西也单独备份。
 
 ## 6. 实测记录（v1）
 
-- 假 dsh：`node --test test/dsh.test.mjs`，7 个测试（设置校验、日志补丁、启动和流式、确认允许 / 拒绝 / 超时、停和接回、进程挂了重起、出错 / 新会话 / 找不到 dsh / 两个 TA 抢一个 home / key 不外泄）全过。
+- 假 dsh：`node --test test/dsh.test.mjs`，13 个测试（设置校验、日志补丁、启动和流式、确认允许 / 拒绝 / 超时、停和接回、进程挂了重起、出错 / 新会话 / 找不到 dsh / 两个 TA 抢一个 home / key 不外泄、换权限确认不了就不发、确认对不上就拒、过了截止时间不放行、key 被说出来时抹掉、单帧 / 每轮 / 整轮超时上限、keyEnv 禁用名单）全过。
 - 真 dsh（`@deepseek-ai/dsh@0.2.2-rc.1`，`node:24-slim` 容器，硅基流动 `deepseek-ai/DeepSeek-V4.1-Flash`）：
   - 发话：冷启动约 0.7 秒握手完，2.5 秒回完一段。
   - 工具：工作目录里写文件、跑 bash 不问，直接做；写系统临时目录 `/tmp` 也不问（沙箱放行临时区）。
   - 确认：写 `/opt/outside.txt` 先被沙箱拒（`step_end ok:false`），模型申请提权，来了 `approval` 事件，批准后写成，`approval_end: allowed`。
   - 停：dsh 跑着 `sleep 20` 时按停，当场 `done cut:true`，进程关掉；下一句重新拉起（约 0.6 秒）、接回原会话，正常回复。
   - 组合后的配置（`--dump-config`）里 `session-log-deepseek` 是 `enabled: false`。
-- 没核实：Mac / Windows 上直接跑（只在 Linux 容器里测过）；停的时候 dsh 正在跑的子命令会不会被一起结束；图片输入（代码按协议写了 `{ type: "image", data, mimeType }`，没用真模型测）；`session-log-deepseek` 关掉以后是不是真的不传（只验证了配置生效）。
+- 没核实：真 dsh 的 `/permission` 在 `session/resume` 带了 `permissionMode` 之后是不是照样回「成功」（只用假 dsh 测过；要是真 dsh 不回成功，改了权限的旧会话会一直要求开新会话，安全但不方便）；Mac / Windows 上直接跑（只在 Linux 容器里测过）；停的时候 dsh 正在跑的子命令会不会被一起结束；图片输入（代码按协议写了 `{ type: "image", data, mimeType }`，没用真模型测）；`session-log-deepseek` 关掉以后是不是真的不传（只验证了配置生效）。

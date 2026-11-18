@@ -438,14 +438,15 @@ test('流里的工具调用原样记成一步（不执行），发 step 事件',
   } finally { await g.close(); }
 });
 
-test('有哪几个 AI：没有文件回空；改要口令；只留认得的字段（顺手写的 key 不落盘）；不给 url、keyEnv；没配 key、没这个 AI 先拦下', async () => {
+test('有哪几个 AI：没有文件回空；名单不能从接口改（带 HOOK_TOKEN 也不行）；只留认得的字段（顺手写的 key 不落盘）；不给 url、keyEnv；没配 key、没这个 AI 先拦下', async () => {
   const g = await setup({ ais: null });
   try {
     assert.deepEqual((await g.call('GET', '/api/ais')).body, []);
     const list = [{ id: 'a1', name: '小克', model: 'claude-x', style: 'anthropic', url: 'https://api.example.com/', keyEnv: 'AI_KEY', key: SECRET, think: true, notes: true, avatar: 'a.png' }];
-    assert.equal((await g.call('PUT', '/api/ais', list)).status, 401);
-    const r = await g.call('PUT', '/api/ais', list, { authorization: 'Bearer tok' });
-    assert.equal(r.status, 200);
+    assert.equal((await g.call('PUT', '/api/ais', list)).status, 403);
+    assert.equal((await g.call('PUT', '/api/ais', list, { authorization: 'Bearer tok' })).status, 403);
+    assert.ok(!fs.existsSync(path.join(g.dir, 'ais.json')));
+    g.chat.setAis(list); // 管理员手写文件（setAis 是后端自己用的那份校验）
     assert.deepEqual((await g.call('GET', '/api/ais')).body, [{ id: 'a1', name: '小克', model: 'claude-x', avatar: 'a.png', notes: true }]);
     const saved = JSON.parse(fs.readFileSync(path.join(g.dir, 'ais.json'), 'utf8'));
     assert.deepEqual(saved[0], { id: 'a1', model: 'claude-x', style: 'anthropic', name: '小克', avatar: 'a.png', url: 'https://api.example.com', keyEnv: 'AI_KEY', think: true, notes: true });
@@ -454,7 +455,8 @@ test('有哪几个 AI：没有文件回空；改要口令；只留认得的字�
       [{ id: 'a', model: 'm', style: 'openai', url: 'https://x.test/v1?key=abc' }], [{ id: 'a', model: 'm', style: 'openai', keyEnv: 'HOOK_TOKEN' }],
       [{ id: 'a', model: 'm', style: 'openai', keyEnv: 'sk-lower-case' }], [{ id: 'a', model: 'm', style: 'openai' }, { id: 'a', model: 'n', style: 'openai' }], { x: 1 },
     ];
-    for (const b of bad) assert.equal((await g.call('PUT', '/api/ais', b, { authorization: 'Bearer tok' })).status, 400, JSON.stringify(b));
+    for (const b of bad) assert.throws(() => g.chat.setAis(b), (e) => e.code === 400, JSON.stringify(b));
+    for (const k of ['WEB_PASSWORD', 'SESSION_SECRET', 'TRANSLATE_KEY', 'BARK_AES']) assert.throws(() => g.chat.setAis([{ id: 'a', model: 'm', style: 'openai', keyEnv: k }]), /不能用/, k);
     assert.equal((await g.sendTo('nope', { text: '嗨' })).status, 404);
     g.chat.setAis([{ id: 'k', model: 'm', style: 'openai', keyEnv: 'AI_EMPTY' }]);
     const r2 = await g.sendTo('k', { text: '嗨' });

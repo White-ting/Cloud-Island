@@ -67,3 +67,32 @@ test('传图传文件：认文件头、上限、发回来、乱编号 404；聊�
     assert.equal((await fetch(g.base + '/api/chat/a/send', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ files: ['https://x.com/a.pdf'] }) })).status, 400);
   } finally { await g.close(); }
 });
+
+test('附件不全信旁边的 json：类型按后缀查表、编号要对得上、后缀要认得、不跟链接、大小要一样', async () => {
+  const g = await setup();
+  try {
+    const r = await fetch(g.base + '/api/upload?name=a.png', { method: 'POST', body: PNG });
+    const img = await r.json();
+    const side = path.join(g.dir, 'files', img.id + '.json'), meta = JSON.parse(fs.readFileSync(side, 'utf8'));
+    const put = (m) => fs.writeFileSync(side, JSON.stringify({ ...meta, ...m }));
+    put({ mime: 'text/html' }); // 类型被改：照后缀发 image/png
+    let f = await fetch(g.base + img.url);
+    assert.deepEqual([f.status, f.headers.get('content-type')], [200, 'image/png']);
+    await f.arrayBuffer();
+    put({ ext: 'html' });
+    assert.equal((await fetch(g.base + img.url)).status, 404);
+    put({ ext: '../../ais' });
+    assert.equal((await fetch(g.base + img.url)).status, 404);
+    put({ id: 'fsomethingelse00' });
+    assert.equal((await fetch(g.base + img.url)).status, 404);
+    put({ size: 1 });
+    assert.equal((await fetch(g.base + img.url)).status, 404);
+    // 文件换成指向外面的链接：不发
+    put({});
+    const file = path.join(g.dir, 'files', img.id + '.png');
+    fs.writeFileSync(path.join(g.dir, 'outside.png'), PNG);
+    fs.renameSync(file, file + '.bak');
+    fs.symlinkSync(path.join(g.dir, 'outside.png'), file);
+    assert.equal((await fetch(g.base + img.url)).status, 404);
+  } finally { await g.close(); }
+});

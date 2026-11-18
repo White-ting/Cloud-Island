@@ -7,6 +7,10 @@
 //   慢慢说 → 说一半就停住不动，等着被关掉（测「停」）
 //   崩     → 回执发完直接退出（退出码 3）
 //   出错   → 这一轮以错误结束
+//   别的会话 / 没编号 / 工具不对 / 长参数 → 来一个对不上的确认（会话不对、没有 callId、工具名不对、参数太长），看后端拒不拒
+//   泄露   → 把环境里的 FAKE_KEY 原样写进回复、思考、工具参数和结果（看后端抹不抹）
+//   刷屏   → 吐一大行不带换行的东西；话多 → 吐很多行（看单帧、每轮上限）
+// 环境变量 FAKE_PERM_FAIL=1：/permission 命令回失败（看后端在确认不了权限时拒不拒发）
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -17,7 +21,7 @@ const note = (o) => fs.appendFileSync(logFile, JSON.stringify(o) + '\n');
 const known = () => { try { return JSON.parse(fs.readFileSync(sessFile, 'utf8')); } catch { return []; } };
 const remember = (sid) => { const k = known(); if (!k.includes(sid)) fs.writeFileSync(sessFile, JSON.stringify([...k, sid])); };
 
-note({ boot: { argv: process.argv.slice(2), cwd: process.cwd(), env: {
+note({ boot: { argv: process.argv.slice(2), cwd: process.cwd(), env: { FAKE_PERM_FAIL: process.env.FAKE_PERM_FAIL,
   DSH_HOME: process.env.DSH_HOME, DSH_PERMISSION_MODE: process.env.DSH_PERMISSION_MODE, DSH_TELEMETRY_DISABLED: process.env.DSH_TELEMETRY_DISABLED,
   FAKE_KEY: process.env.FAKE_KEY, HOOK_TOKEN: process.env.HOOK_TOKEN, SOMETHING_ELSE: process.env.SOMETHING_ELSE, EXTRA: process.env.EXTRA } } });
 
@@ -62,6 +66,28 @@ async function prompt(id, { sessionId: sid, contentBlocks }) {
     ev(sid, 'tool/result', { turn: 1, step: 1, message: { role: 'tool', toolCallId: 'call-1', isError: !ok, content: [{ type: 'text', text: ok ? '写好了 a.txt' : '被拒绝了' }] } });
     say(ok ? '建好了。' : '好，不建了。');
     end();
+  } else if (/别的会话|没编号|工具不对|长参数/.test(text)) {
+    const long = text.includes('长参数');
+    ev(sid, 'tool/call', { turn: 1, step: 1, callId: 'call-x', name: 'write', arguments: JSON.stringify({ path: '/opt/x.txt', content: long ? 'y'.repeat(70000) : 'hi' }) });
+    const q = { sessionId: text.includes('别的会话') ? 'someone-else' : sid, toolName: text.includes('工具不对') ? 'bash' : 'write', reason: '要写工作区外面' };
+    if (!text.includes('没编号')) q.callId = 'call-x';
+    const r = await ask('approval/request', q);
+    note({ approval: r });
+    ev(sid, 'tool/result', { turn: 1, step: 1, message: { role: 'tool', toolCallId: 'call-x', isError: r?.outcome !== 'allowed-once', content: [{ type: 'text', text: '结果' }] } });
+    say('完了');
+    end();
+  } else if (text.includes('泄露')) {
+    const k = process.env.FAKE_KEY || '';
+    say('key 是 ' + k, '想一想 ' + k);
+    ev(sid, 'tool/call', { turn: 1, step: 1, callId: 'c9', name: 'bash', arguments: JSON.stringify({ command: 'echo ' + k, env: { [k]: 1 } }) });
+    ev(sid, 'tool/result', { turn: 1, step: 1, message: { role: 'tool', toolCallId: 'c9', content: [{ type: 'text', text: 'out ' + k }] } });
+    end();
+  } else if (text.includes('刷屏')) {
+    say('开始');
+    process.stdout.write('x'.repeat(300000)); // 不带换行
+  } else if (text.includes('话多')) {
+    say('开始');
+    for (let i = 0; i < 200; i++) ev(sid, 'agent/noise', { pad: 'z'.repeat(2000) });
   } else if (text.includes('多步')) {
     say('第一步');
     ev(sid, 'tool/call', { turn: 1, step: 1, callId: 'c2', name: 'bash', arguments: '{"command":"ls"}' });
@@ -96,7 +122,10 @@ async function handle(m) {
   }
   if (method === 'session/query') {
     const t = params.contentBlocks?.[0]?.text || '';
-    if (t.startsWith('/permission ')) return send({ id, result: { kind: 'command', execution: { commandId: 'cmd1', result: { kind: 'success', text: 'ok' } } } });
+    if (t.startsWith('/permission ')) {
+      if (process.env.FAKE_PERM_FAIL === '1') return send({ id, result: { kind: 'command', execution: { commandId: 'cmd1', result: { kind: 'error', text: '不能改' } } } });
+      return send({ id, result: { kind: 'command', execution: { commandId: 'cmd1', result: { kind: 'success', text: 'ok' } } } });
+    }
     return prompt(id, params);
   }
   if (method === 'shutdown') { send({ id, result: {} }); setTimeout(() => process.exit(0), 20); return; }

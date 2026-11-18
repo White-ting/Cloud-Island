@@ -11,6 +11,7 @@ import { createServer } from '../lib/server.mjs';
 import { openSvc } from '../lib/svc.mjs';
 import { openFiles } from '../lib/files.mjs';
 import { openVoice, guessProv } from '../lib/voice.mjs';
+import { makeNet } from '../lib/net.mjs';
 
 const KEY = 'sk-VOICE-SEKRIT-0123456789';
 const MP3 = Buffer.concat([Buffer.from('ID3'), Buffer.alloc(40, 1)]);
@@ -37,9 +38,10 @@ async function setup() {
   });
   await new Promise((ok) => up.server.listen(0, '127.0.0.1', ok));
   const base = `http://127.0.0.1:${up.server.address().port}`;
-  const store = openStore({ dir }), svc = openSvc({ dir }), files = openFiles({ dir });
+  const net = makeNet({ allow: 'http://127.0.0.1, http://localhost' }); // 假上游在本机：像管理员在 ALLOW_URLS 里放行了一样
+  const store = openStore({ dir }), svc = openSvc({ dir, net }), files = openFiles({ dir });
   const logs = [];
-  const voice = openVoice({ dir, svc, folder: (ai) => store.folder(ai), files, log: (...a) => logs.push(a.join(' ')) });
+  const voice = openVoice({ dir, svc, folder: (ai) => store.folder(ai), files, log: (...a) => logs.push(a.join(' ')), net });
   const srv = createServer({ cfg: { port: 0 }, store, svc, files, voice });
   const { port } = await srv.listen();
   const outs = [];
@@ -79,10 +81,11 @@ test('每个 AI 的声音设置：没改的照「TA 的声音」那一项；改�
     assert.deepEqual(r.json.own, {});
     assert.deepEqual(r.json.use, { prov: 'openai', url: g.base + '/sf/v1', model: 'cosy', voice: 'v-o', speed: 1.1, from: 'tts' });
     assert.deepEqual([r.json.hasKey, r.json.ready], [true, true]);
-    // 换了服务商：地址、模型回到那一家的默认（Key 还是「TA 的声音」那一把）
+    // 换了服务商：地址、模型回到那一家的默认；「TA 的声音」那把 Key 是给另一个地址的，不带过去
     r = await g.call('PUT', '/api/voice/o', { prov: 'elevenlabs', voice: 'v2', speed: 0.9 });
     assert.deepEqual(r.json.own, { prov: 'elevenlabs', voice: 'v2', speed: 0.9 });
     assert.deepEqual([r.json.use.url, r.json.use.model, r.json.use.voice], ['https://api.elevenlabs.io/v1', 'eleven_v4', 'v2']);
+    assert.equal(r.json.hasKey, false);
     assert.equal(fs.statSync(path.join(g.dir, 'voice', 'o.json')).mode & 0o777, 0o600);
     r = await g.call('PUT', '/api/voice/o', { prov: null, voice: '' });
     assert.deepEqual(r.json.own, { speed: 0.9 });
@@ -97,7 +100,7 @@ test('每个 AI 的声音设置：没改的照「TA 的声音」那一项；改�
 test('出声 ElevenLabs：音色进路径、xi-api-key、model_id、语速超了按上限；回音频字节', async () => {
   const g = await setup();
   try {
-    g.svc.putFm('tts', { url: 'https://api.elevenlabs.io/v1', model: 'eleven_v4', key: KEY });
+    g.svc.putFm('tts', { url: g.base + '/el/v1', model: 'eleven_v4', key: KEY }); // Key 跟着这个地址（同一个 origin 才带）
     await g.call('PUT', '/api/voice/o', { prov: 'elevenlabs', url: g.base + '/el/v1', voice: 'v 1', model: 'eleven_v3', speed: 1.5 });
     const r = await g.tts({ ai: 'o', text: 'hello there' });
     assert.equal(r.status, 200);
@@ -248,5 +251,75 @@ test('认字报错：上游出错回 502，录音照样存着、报错里带 fil
     r = await g.stt(Buffer.from('this is not audio at all, just text'));
     assert.equal(r.status, 415);
     g.noLeak();
+  } finally { await g.close(); }
+});
+
+test('Key 跟着地址走：AI 单独改到别的地址不带 Key；设置里换了地址又没填新 Key，旧 Key 清掉；旧文件没记 keyAt 的按它自己的地址算', async () => {
+  const g = await setup();
+  const other = g.base.replace('127.0.0.1', 'localhost'); // 同一个假上游，换个 origin
+  try {
+    g.svc.putFm('tts', { url: g.base + '/sf/v1', model: 'cosy', key: KEY, voices: { o: { id: 'v-o' } } });
+    await g.call('PUT', '/api/voice/o', { url: other + '/sf/v1' });
+    let r = await g.tts({ ai: 'o', text: 'a' });
+    assert.equal(r.status, 200); // OpenAI 兼容的没 Key 也发（本机服务），但不带 Key
+    assert.equal(g.up.seen.at(-1).headers.authorization, undefined);
+    await g.call('PUT', '/api/voice/o', { prov: 'elevenlabs', voice: 'v' });
+    r = await g.tts({ ai: 'o', text: 'a' });
+    assert.equal(r.status, 503); // ElevenLabs 要 Key：设置里那把是给别的地址的
+    await g.call('PUT', '/api/voice/o', { prov: null, url: null });
+    await g.tts({ ai: 'o', text: 'a' });
+    assert.equal(g.up.seen.at(-1).headers.authorization, 'Bearer ' + KEY); // 回到同一个地址：带
+    // 只换地址、不给 Key：旧 Key 清掉
+    let v = g.svc.putFm('tts', { url: other + '/sf/v1' });
+    assert.equal(v.hasKey, false);
+    // 换地址时 Key 只填了空格：当没给，旧 Key 不能借这个带过去（11-19 sol 复审）
+    g.svc.putFm('tts', { url: g.base + '/sf/v1', key: KEY });
+    v = g.svc.putFm('tts', { url: other + '/sf/v1', key: '   ' });
+    assert.equal(v.hasKey, false);
+    // 换地址时同时给新 Key：留着
+    v = g.svc.putFm('tts', { url: g.base + '/sf/v1', key: KEY });
+    assert.equal(v.hasKey, true);
+    // 同一个 origin 换路径：Key 留着
+    assert.equal(g.svc.putFm('tts', { url: g.base + '/v2' }).hasKey, true);
+    // 旧版本存的（没有 keyAt）：按它自己的地址算
+    const f = path.join(g.dir, 'svc.json'), d = JSON.parse(fs.readFileSync(f, 'utf8'));
+    delete d.fm.tts.keyAt; d.fm.tts.url = g.base + '/sf/v1';
+    fs.writeFileSync(f, JSON.stringify(d));
+    await g.tts({ ai: 'o', text: 'a' });
+    assert.equal(g.up.seen.at(-1).headers.authorization, 'Bearer ' + KEY);
+    g.noLeak();
+  } finally { await g.close(); }
+});
+
+test('出站地址：默认只许 https 公网；本机、私网、http 要 ALLOW_URLS 放行；域名解析到私网也不发；上游回跳转不跟', async () => {
+  const g = await setup();
+  try {
+    // 默认（没放行）：填设置时就拦下
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ta-voice-')); dirs.push(dir);
+    const strict = openSvc({ dir });
+    for (const u of ['http://example.com/v1', 'https://127.0.0.1/v1', 'https://localhost:8080/v1', 'https://10.1.2.3/v1', 'https://[::1]/v1', 'https://192.168.1.5/v1', 'https://100.100.1.1/v1']) {
+      assert.throws(() => strict.putFm('tts', { url: u }), (e) => e.code === 400 && /ALLOW_URLS|https/.test(e.message), u);
+    }
+    assert.equal(strict.putFm('tts', { url: 'https://api.example.com/v1' }).url, 'https://api.example.com/v1');
+    // 域名解析到私网：发之前拦下（假的 DNS）
+    const net = makeNet({ lookup: async (h) => (h === 'evil.test' ? [{ address: '192.168.0.9', family: 4 }] : [{ address: '93.184.216.34', family: 4 }]) });
+    await assert.rejects(net.check('https://evil.test/v1'), (e) => e.code === 400 && /ALLOW_URLS/.test(e.message));
+    await assert.rejects(makeNet({ lookup: async () => [{ address: '::ffff:127.0.0.1', family: 6 }] }).check('https://x.test/'), /ALLOW_URLS/);
+    assert.equal((await net.check('https://ok.test/v1')).hostname, 'ok.test');
+    // 开着 Clash 之类 fake-ip 的：域名都解析成 198.18.x.x，要放行（不然开代理的人什么都填不了）
+    assert.equal((await makeNet({ lookup: async () => [{ address: '198.18.0.42', family: 4 }] }).check('https://api.elevenlabs.io/')).hostname, 'api.elevenlabs.io');
+    assert.throws(() => makeNet().okSync('https://198.18.0.42/'), /ALLOW_URLS/);   // 网址里直接写这一段的 IP 照样拦
+    // 放行：写了端口只放那个端口
+    const one = makeNet({ allow: 'http://127.0.0.1:11434' });
+    assert.ok(one.okSync('http://127.0.0.1:11434/v1'));
+    assert.throws(() => one.okSync('http://127.0.0.1:11435/v1'), /ALLOW_URLS/);
+    // 上游回跳转：不跟（假上游只看到一次请求），回 502
+    g.svc.putFm('tts', { url: g.base + '/sf/v1', key: KEY, voices: { o: { id: 'v' } } });
+    g.up.reply = (q, res) => { res.writeHead(302, { location: g.base + '/elsewhere' }); res.end(); };
+    const n = g.up.seen.length;
+    const r = await g.tts({ ai: 'o', text: 'a' });
+    assert.equal(r.status, 502);
+    assert.equal(g.up.seen.length - n, 1);
+    assert.ok(!g.up.seen.some((x) => x.url === '/elsewhere'));
   } finally { await g.close(); }
 });

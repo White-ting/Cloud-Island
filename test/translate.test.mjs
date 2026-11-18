@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { openTranslate, chatUrl } from '../lib/translate.mjs';
 import { openSvc } from '../lib/svc.mjs';
+import { makeNet } from '../lib/net.mjs';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'tr-'));
 const reply = (o) => ({ ok: true, status: 200, json: async () => o });
@@ -32,13 +33,17 @@ test('.env 那三项：地址补上 /chat/completions、带 key；翻过的走�
 
 test('设置里的「翻译」填了就用它（比 .env 优先）；没 key 不带 authorization；缓存写在盘上，重开也认', async () => {
   const dir = tmp(), calls = [];
-  const svc = openSvc({ dir });
+  const net = makeNet({ allow: 'http://127.0.0.1:2' }); // 设置里填的本机地址：要管理员放行
+  const svc = openSvc({ dir, net });
   svc.putFm('trans', { url: 'http://127.0.0.1:2/v1/chat/completions', model: 'm-svc' });
-  const t = openTranslate({ dir, svc, env: { base: 'http://127.0.0.1:1/v1', model: 'm-env' }, fetchFn: okFetch(calls) });
+  const t = openTranslate({ dir, svc, env: { base: 'http://127.0.0.1:1/v1', model: 'm-env' }, fetchFn: okFetch(calls), net });
   await t.run({ texts: ['first one'] });
   assert.deepEqual(calls[0], { url: 'http://127.0.0.1:2/v1/chat/completions', auth: undefined, model: 'm-svc' });
-  const t2 = openTranslate({ dir, svc, fetchFn: async () => { throw new Error('不该再问'); } });
+  const t2 = openTranslate({ dir, svc, fetchFn: async () => { throw new Error('不该再问'); }, net });
   assert.deepEqual((await t2.run({ texts: ['first one'] })).zh, ['译：first one']);
+  // 设置文件里是本机地址、这次又没放行（比如管理员把 ALLOW_URLS 去掉了）：不发
+  const t3 = openTranslate({ dir, svc, fetchFn: async () => { throw new Error('不该发'); } });
+  assert.deepEqual((await t3.run({ texts: ['second one'] })).by, ['fail']);
 });
 
 test('服务出错：那一段回空、标 fail，不整个报错；参数不对报 400', async () => {
