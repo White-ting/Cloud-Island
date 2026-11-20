@@ -347,3 +347,94 @@ test('Claude Code 钩子脚本：拿假的事件真跑一遍；后端连不上�
     assert.ok(fs.readFileSync(path.join(dir, 'hook.log'), 'utf8').trim().split('\n').length >= 2);
   } finally { try { await srv.close(); } catch {} }
 });
+
+// ---- 召回顺着连线（照 Obsidian）----
+// 一串连着的：来处 root ← mid → 生出来的 c1、c2、念想 w（新的在后），还有一条归档了的 g
+function chain() {
+  const f = fresh(), { s, clock } = f;
+  const root = s.add('a', { kind: 'note', text: '她养了一只橘猫' }, 'me');
+  clock.t += 1000; const mid = s.add('a', { kind: 'pact', text: '每周五给团子买罐头', from: [root.id] }, 'me');
+  clock.t += 1000; const c1 = s.add('a', { kind: 'note', text: '换成鸡肉味了', from: [mid.id] }, 'me');
+  clock.t += 1000; const c2 = s.add('a', { kind: 'exp', text: '她说下次带去体检', from: [mid.id] }, 'ai');
+  clock.t += 1000; const w = s.add('a', { kind: 'wish', text: '想看看它长什么样', from: [mid.id] }, 'ai');
+  clock.t += 1000; const g = s.add('a', { kind: 'note', text: '这条要收起来', from: [mid.id] }, 'me');
+  s.remove('a', g.id);
+  s.add('a', { kind: 'note', text: '今天下雨' }, 'me');
+  return { ...f, root, mid, c1, c2, w, g };
+}
+
+test('召回连线：最像那条特别像时自动带连着的，先来处、再新生出来的，最多 3 条、只走一步；归档的不带；跟着来的不算想起', async () => {
+  const { s, h, root, mid, c1, c2, w, g } = chain();
+  const c = (await h.before('a', { text: '每周五给团子买罐头' })).context;
+  const rows = c.split('\n');
+  const i = rows.findIndex((r) => r.includes(`[${mid.id}]`));
+  assert.ok(i > 0);
+  assert.deepEqual(rows.slice(i + 1, i + 4), [
+    `  ↳ 它从这条来 [${root.id}]（记事）她养了一只橘猫`,
+    `  ↳ 从它生出来 [${w.id}]（念想）想看看它长什么样`,
+    `  ↳ 从它生出来 [${c2.id}]（经验）她说下次带去体检`,
+  ]);
+  assert.ok(!c.includes(c1.id), '超过 3 条的不带');
+  assert.ok(!c.includes(g.id), '归档的不带');
+  assert.ok(!c.includes('memory_read'), '展开了就不用提示');
+  // 跟着来的念想不算想起：不进 recalled，也不记「被用到」
+  assert.ok(!s.lastRecalled('a').includes(w.id));
+  const items = s.load('a').items;
+  assert.ok(!items.find((m) => m.id === w.id).used);
+  assert.ok(!items.find((m) => m.id === root.id).used);
+  assert.equal(items.find((m) => m.id === mid.id).used, 1);
+});
+
+test('召回连线：不够像就不展开，只标「连着几条」并提示 memory_read；已经在召回里的不重复算', async () => {
+  const { h, mid } = chain();
+  const c = (await h.before('a', { text: '周五买罐头吧' })).context;
+  assert.ok(c.includes(`[${mid.id}]（约定）每周五给团子买罐头（连着 4 条）`));
+  assert.ok(!c.includes('↳'));
+  assert.match(c, /memory_read/);
+});
+
+test('召回：最像的那条给全文，其余照旧截成一行', async () => {
+  const { s, h } = fresh();
+  const long = '团子的故事：' + '它今天又趴在窗台上晒太阳。'.repeat(20);
+  const other = '团子的另一个故事：' + '它把毛线球推到了沙发底下。'.repeat(20);
+  s.add('a', { kind: 'note', text: long }, 'me');
+  s.add('a', { kind: 'note', text: other }, 'me');
+  const c = (await h.before('a', { text: '团子的故事' })).context;
+  assert.ok(c.includes(long), '最像的给全文');
+  assert.ok(!c.includes(other) && c.includes(other.slice(0, 120) + '…'), '其余截到 120 字');
+});
+
+test('读一条：全文 + 连着的几条；读的这条算用到一次，连着的不算；编号不对 404', () => {
+  const { s, h, root, mid, w } = chain();
+  const t = h.read('a', mid.id);
+  assert.match(t, new RegExp(`^\\[${mid.id}\\]（约定，.+记的）每周五给团子买罐头`));
+  assert.ok(t.includes('连着的：') && t.includes(`它从这条来 [${root.id}]`) && t.includes(`从它生出来 [${w.id}]`));
+  assert.ok(h.read('a', root.id).includes(`从它生出来 [${mid.id}]`));
+  const items = s.load('a').items;
+  assert.equal(items.find((m) => m.id === mid.id).used, 1);
+  assert.ok(!items.find((m) => m.id === w.id).used);
+  assert.match(h.read('a', s.add('a', { kind: 'note', text: '孤零零的一条' }, 'me').id), /没有连着的/);
+  assert.throws(() => h.read('a', 'nope'), (e) => e.code === 404);
+});
+
+test('召回连线（审稿补）：专心模式下连着的念想不带也不计数；「连着 N 条」数全，超过 9 条也照实数', async () => {
+  const { s, h, mid, w, c2 } = chain();
+  const c = (await h.before('a', { text: '每周五给团子买罐头', focus: true })).context;
+  assert.ok(!c.includes(w.id), '专心模式不带念想');
+  assert.ok(c.includes(c2.id));
+  for (let i = 0; i < 10; i++) s.add('a', { kind: 'note', text: `第${i}件小事`, from: [mid.id] }, 'me');
+  assert.ok((await h.before('a', { text: '周五买罐头吧' })).context.includes('（连着 14 条）'));
+});
+
+test('读一条（审稿补）：读念想放进这一轮的候选，接着说到它就算想起一次；读别的不放；不多算一轮', () => {
+  const { s, h, mid, w } = chain();
+  const r0 = s.load('a').sess?.rounds;
+  h.read('a', mid.id);
+  assert.ok(!s.lastRecalled('a').includes(mid.id));
+  h.read('a', w.id);
+  assert.ok(s.lastRecalled('a').includes(w.id));
+  assert.equal(s.load('a').sess?.rounds, r0);
+  const before = s.load('a').items.find((m) => m.id === w.id).hits || 0;
+  h.after('a', { reply: '我刚才在想，想看看它长什么样', sid: 's1' });
+  assert.equal(s.load('a').items.find((m) => m.id === w.id).hits, before + 1);
+});

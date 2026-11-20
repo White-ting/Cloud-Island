@@ -30,7 +30,7 @@ async function setup() {
   };
   const rpc = async (method, params) => (await raw({ jsonrpc: '2.0', id: ++n, method, ...(params ? { params } : {}) })).body;
   const tool = async (name, args) => (await rpc('tools/call', { name, arguments: args })).result;
-  return { store, srv, raw, rpc, tool };
+  return { store, srv, raw, rpc, tool, port };
 }
 
 test('握手：回客户端要的协议版本（认得的），不认得的回最新的；initialized 通知回 202；ping；没口令 401；GET 回 405', async () => {
@@ -63,7 +63,7 @@ test('三个工具：列表里有中文说明；开场 = hooks.start；想一想
   const g = await setup();
   try {
     const tools = (await g.rpc('tools/list')).result.tools;
-    assert.deepEqual(tools.map((t) => t.name), ['memory_start', 'memory_recall', 'memory_note', 'memory_diary']); // 第⑨批加了翻日记
+    assert.deepEqual(tools.map((t) => t.name), ['memory_start', 'memory_recall', 'memory_note', 'memory_read', 'memory_diary']); // 后来加了翻日记、读一条
     assert.deepEqual(tools, TOOLS);
     assert.ok(tools.every((t) => /[一-龥]/.test(t.description) && t.inputSchema.type === 'object'));
     let r = await g.tool('memory_start', {});
@@ -84,5 +84,42 @@ test('三个工具：列表里有中文说明；开场 = hooks.start；想一想
     }
     assert.equal((await g.tool('memory_note', { notes: [{ kind: 'nope', text: 'x' }] })).isError, true); // 一条都没记上
     assert.equal((await g.rpc('tools/call', { name: 'rm_rf', arguments: {} })).error.code, -32602);
+  } finally { await g.srv.close(); }
+});
+
+test('读一条：memory_read 回全文和连着的；没给 id、编号不对回错；钩子口令的 GET /api/hook/{ai}/read 也能读', async () => {
+  const g = await setup();
+  try {
+    const a = g.store.add('grok', { kind: 'note', text: '她养了一只橘猫' }, 'me');
+    const b = g.store.add('grok', { kind: 'pact', text: '每周五给团子买罐头', from: [a.id] }, 'me');
+    let r = await g.tool('memory_read', { id: b.id });
+    assert.ok(!r.isError);
+    assert.ok(r.content[0].text.includes('每周五给团子买罐头') && r.content[0].text.includes(`它从这条来 [${a.id}]`));
+    assert.equal((await g.tool('memory_read', {})).isError, true);
+    r = await g.tool('memory_read', { id: 'nope' });
+    assert.deepEqual([r.isError, r.content[0].text], [true, '没有这条记忆']);
+    const h = await fetch(`http://127.0.0.1:${g.port}/api/hook/grok/read?id=${a.id}`, { headers: { authorization: 'Bearer tok' } });
+    assert.equal(h.status, 200);
+    assert.ok((await h.json()).text.includes(`从它生出来 [${b.id}]`));
+    assert.equal((await fetch(`http://127.0.0.1:${g.port}/api/hook/grok/read?id=${a.id}`)).status, 401);
+  } finally { await g.srv.close(); }
+});
+
+test('只露出点名的工具：?tools=read,diary 时列表只有这两样、别的调不了、开场说明换成短的；不认得的名字忽略', async () => {
+  const g = await setup();
+  try {
+    const call = async (method, params, q) => {
+      const r = await fetch(`http://127.0.0.1:${g.port}/mcp/grok${q}`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer tok' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, ...(params ? { params } : {}) }) });
+      return r.json();
+    };
+    const q = '?tools=read,diary,nope';
+    assert.deepEqual((await call('tools/list', null, q)).result.tools.map((t) => t.name), ['memory_read', 'memory_diary']);
+    assert.match((await call('initialize', {}, q)).result.instructions, /钩子做/);
+    assert.equal((await call('tools/call', { name: 'memory_start', arguments: {} }, q)).error.code, -32602);
+    assert.ok(!(await call('tools/call', { name: 'memory_diary', arguments: {} }, q)).error);
+    assert.equal((await call('tools/list', null, '')).result.tools.length, 5);
+    assert.deepEqual((await call('tools/list', null, '?tools=')).result.tools, [], '空着就一个都不给');
+    assert.equal((await call('tools/call', { name: 'memory_note', arguments: { reply: 'x' } }, '?tools=')).error.code, -32602);
   } finally { await g.srv.close(); }
 });

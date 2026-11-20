@@ -2875,8 +2875,7 @@ function pondCfg() { let c = {}; try { c = JSON.parse(get('fe-pond') || '{}') ||
 function nowMount() {
   const host = $('#wishWater'); if (!host) return;
   const list = memLive().filter(m => kOf(m) === 'wish' && !m.done).map(m => ({ id: m.id, text: m.priv ? '' : m.text, lv: Math.max(0, Math.min(3, m.lv | 0)), hits: m.hits, priv: !!m.priv, sunk: wishSunk(m) }));
-  if (!list.length) return;
-  const pc = pondCfg();
+  const pc = pondCfg();   // 没有念想也照样画水面（空的、水位低）
   pondMount(host, list, { k: pc.k, season: pc.season, top: pondTop, onView: (t) => { pondTop = t; }, onPick: (m) => {
     const c = $('#nwCap'); if (!c) return;
     c.innerHTML = m.priv ? '<div class="nw priv">' + esc(AI) + ' 自己的，没打开给你看。</div>'
@@ -3553,7 +3552,7 @@ return { drop() { P.air = true; P.vy = -320; idle = 0; setMood('wow', .7); },
 /*PET-JS-END*/
 function nowBody() {
   const W = memLive().filter(m => kOf(m) === 'wish'), open = W.filter(m => !m.priv), pv = W.length - open.length;
-  if (!W.length) return '<div class="sb-note">' + esc(AI) + ' 还没有留下念想。TA 自己说要留的时候才会出现在这里，没有人替 TA 猜。</div>';
+  if (!W.length) return '<div id="wishWater" data-water="calm"></div><div class="sb-note">水面还空着：' + esc(AI) + ' 还没有留下念想。TA 自己说要留的时候才会漂上来，没有人替 TA 猜。</div>';
   const wl = wishWater(W), rec = (x, y) => (y.last || y.t) - (x.last || x.t);
   const it = (m, cls) => '<button class="nw' + (cls ? ' ' + cls : '') + '" data-nw="' + m.id + '">' + esc(m.text) + '<small>' + (m.hits ? '<span>想起过 ' + m.hits + ' 次</span>' : '') + '<span>' + ago(m.done ? m.t2 || m.last || m.t : wishTouched(m)) + (m.done ? '了了' : '碰过') + '</span></small></button>';
   const sunk = open.filter(m => wishSunk(m)), live = open.filter(m => !m.done && !wishSunk(m)), done = open.filter(m => m.done);
