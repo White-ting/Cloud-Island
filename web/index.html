@@ -4520,7 +4520,7 @@ const FM = [
   ['stt', '语音转文字', '你发的语音条转成字', [['硅基流动', 'https://api.siliconflow.cn/v1', 'FunAudioLLM/SenseVoiceSmall', ['FunAudioLLM/SenseVoiceSmall', 'Qwen/Qwen3-ASR-1.7B']], ['OpenAI', 'https://api.openai.com/v1', 'whisper-1'], ['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen3-asr-flash']]],
   ['mood', '听语气', '听出你语音里的情绪和语速', [['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-omni-turbo'], ['Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3-flash']]],
   ['tts', 'TA 的声音', '语音条和打电话时 TA 说话', [['ElevenLabs', 'https://api.elevenlabs.io/v1', 'eleven_v4', EL_M], ['MiniMax', 'https://api.minimaxi.com/v1', 'speech-2.6-hd'], ['硅基流动', 'https://api.siliconflow.cn/v1', 'FunAudioLLM/CosyVoice2-0.5B'], ['Cartesia', 'https://api.cartesia.ai', 'sonic-3.6', CA_M]]],
-  ['memo', '记忆小模型', '照 TA 写的标准判断哪些话要记', [['硅基流动', 'https://api.siliconflow.cn/v1', 'Qwen/Qwen3-8B'], ['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-flash'], ['本机 Ollama', 'http://127.0.0.1:11434/v1', 'qwen3.5:9b']]],
+  ['memo', '记忆小模型', '夜里整理记忆前先帮 TA 过一遍材料', [['硅基流动', 'https://api.siliconflow.cn/v1', 'Qwen/Qwen3-8B'], ['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-flash'], ['本机 Ollama', 'http://127.0.0.1:11434/v1', 'qwen3.5:9b']]],
 ];
 // 打电话单独指定的两家：「语音和通话」里选了「单独指定」才用，没选就用上面的 stt / tts。电话里一句一句地认、一句一句地念，挑出字快的
 const FM_CALL = [
@@ -4608,11 +4608,28 @@ function fmForm() {
     + '<div class="fld"><input id="fmNeg" placeholder="不想要的东西（负面词）" value="' + esc(c.neg) + '"></div>'
     + '<div class="fld tm"><label>种子<input type="number" id="fmSeed" min="0" value="' + c.seed + '"></label></div>'
     + '<div class="sb-note">种子填 0 就是每次随机；同样的描述配同一个种子，画出来差不多，适合微调。<br>NovelAI 步数超过 28、尺寸超过 1024×1024 要另花点数，这里最多填 28。</div>';
+  if (k === 'memo') h += mmRows();
   return h + '<div class="mm-two"><button class="btn" id="fmSave">存好</button><button class="btn" id="fmTest">' + (VOICED.includes(k) ? '试听一句' : '试一下') + '</button></div>';
+}
+// 记忆小模型「给谁开」：地址、模型、Key 所有 AI 共用上面这一份；开不开每个 AI 分开（GET /api/memmodel/{AI}、PUT /api/memmodel/{AI}/on）
+let MMON = null;
+async function mmLoad() {
+  const o = {};
+  for (const a of AIS) { if (!a.id) continue; try { const j = await api('/api/memmodel/' + a.id); o[a.id] = { on: !!j.on, src: j.src }; } catch (e) { o[a.id] = { err: true }; } }
+  MMON = o; if (fmOpen === 'memo') subOpen(sub.dataset.t, true);
+}
+function mmRows() {
+  if (!LIVE) return '';
+  if (!MMON) { mmLoad(); return '<div class="sb-note">在看每个 AI 开没开…</div>'; }
+  return '<div class="nv-sec">给谁开</div><div class="rows2">' + AIS.map((a, j) => a.id && MMON[a.id] ? '<button class="row sub2" data-mmon="' + esc(a.id) + '"><span>' + esc(aiN(j))
+      + (MMON[a.id].src === 'own' ? '<small class="rn">它单独设了一家，不用上面这份</small>' : '') + '</span><em>' + (MMON[a.id].err ? '读不到' : MMON[a.id].on ? '开' : '关') + '</em></button>' : '').join('') + '</div>'
+    + '<div class="sb-note">开了的 AI，每天夜里整理记忆前，先让上面这个小模型把材料过一遍（打标、可能是同一件事的、到日子的、印象草稿），拿主意的还是夜里的 TA。会把记忆（私人念想除外）发给上面这一家。</div>';
 }
 function fmClick(e) {                                         // 功能模型页和「语音和通话」页都走这里，改完重画当前这一页
   const re = () => subOpen(sub.dataset.t, true), k = fmOpen;
-  const f = e.target.closest('[data-fm]'); if (f) { fmOpen = fmOpen === f.dataset.fm ? null : f.dataset.fm; fmProv = false; fmVo = null; return re(); }
+  const f = e.target.closest('[data-fm]'); if (f) { fmOpen = fmOpen === f.dataset.fm ? null : f.dataset.fm; fmProv = false; fmVo = null; if (fmOpen === 'memo') MMON = null; return re(); }
+  const mo = e.target.closest('[data-mmon]'); if (mo) { const id = mo.dataset.mmon, cur = MMON && MMON[id]; if (!cur || cur.err) return;
+    return api('/api/memmodel/' + id + '/on', { method: 'PUT', body: { on: !cur.on } }).then(j => { MMON[id] = { on: !!j.on, src: j.src }; re(); }).catch(er => toast('没改成：' + er.message)); }
   if (e.target.closest('#fmPv')) { fmProv = !fmProv; return re(); }
   const fp = e.target.closest('[data-fp]'); if (fp) {
     const j = +fp.dataset.fp, c = fmGet(k), p = fmDef(k)[3][j];

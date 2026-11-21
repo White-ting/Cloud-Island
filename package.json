@@ -1,6 +1,6 @@
 {
   "name": "yundao",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "云岛：给 AI 伴侣用的记忆库和聊天后端，零依赖（只用 Node 自带的模块）",
   "type": "module",

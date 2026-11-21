@@ -110,14 +110,14 @@ async function main() {
   const slotGuard = makeSlotGuard({ net, keyOrigins: cfg.helperKeyOrigins });
   const helper = makeHelper({ store, digest, keyOf: cfg.keyOf, log, guard: slotGuard });
   // 记忆小模型：夜里整理记忆前先出一段补充（打标、同一件事、到日子的、印象草稿）。每个 AI 各自设，默认关
-  const memModel = makeMemModel({ store, tz: cfg.tz, keyOf: cfg.keyOf, runnerOf: makeApiRunner, log, guard: slotGuard });
+  const svc = openSvc({ dir: cfg.dataDir, net }); // 设置里要填的服务（翻译、认字、出声、推送…），Key 只进不出
+  const memModel = makeMemModel({ store, tz: cfg.tz, keyOf: cfg.keyOf, runnerOf: makeApiRunner, log, guard: slotGuard, svc });
   // 主动找人：设置、守门、TA 自己定的回头看。总开关默认关
   const knock = openKnock({ store, dir: cfg.dataDir, tz: cfg.tz, info: (ai) => chat.info(ai) });
   const hooks = makeHooks({ store, tz: cfg.tz, persona, dreams, later: knock.later, digest, diary, pat, helper });
   // 聊天（走 API 的 TA）：有哪几个 AI 写在 data/ais.json；key 从环境变量取（ais.json 里只写变量名）
   // onWake：TA 主动说了一句之后推送；onReply：她发一句、TA 回完以后，网页不在前台就推送
   const files = openFiles({ dir: cfg.dataDir }); // 她传的图和文件；聊天发给模型时要读
-  const svc = openSvc({ dir: cfg.dataDir, net }); // 设置里要填的服务（翻译、认字、出声、推送…），Key 只进不出
   let chat = null;
   const nameOf = (ai) => { try { return chat.ais().find((a) => a.id === ai)?.name || ai; } catch { return ai; } };
   const push = openPush({ dir: cfg.dataDir, svc, env: cfg.push, nameOf, log, net });

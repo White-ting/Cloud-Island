@@ -36,12 +36,12 @@ const ON = { on: true, url: 'https://api.example.com', model: 'flash', keyEnv: '
 
 test('设置：默认关；打开要先填 url 和 model；key 只存变量名；talk 只能是布尔；get 不带 url 和 keyEnv', () => {
   const { mm } = fresh();
-  assert.deepEqual(mm.get('a'), { on: false, model: '', key: false, talk: false, impression: null });
+  assert.deepEqual(mm.get('a'), { on: false, model: '', key: false, src: null, talk: false, impression: null });
   assert.throws(() => mm.set('a', { on: true }), (e) => e.code === 400);
   assert.throws(() => mm.set('a', { keyEnv: 'sk-real-key' }), (e) => e.code === 400);
   assert.throws(() => mm.set('a', { talk: 'yes' }), (e) => e.code === 400);
   const g = mm.set('a', ON);
-  assert.deepEqual(g, { on: true, model: 'flash', key: true, talk: false, impression: null });
+  assert.deepEqual(g, { on: true, model: 'flash', key: true, src: 'own', talk: false, impression: null });
   assert.ok(!JSON.stringify(g).includes('example.com'));
 });
 
@@ -162,4 +162,28 @@ test('公开版：Key 没登记能发到这个地址就不让打开；真跑前�
   const s2 = makeSlotGuard({ net: { okSync() {}, async check() { throw Object.assign(new Error('地址指向局域网'), { safe: true }); } }, keyOrigins: 'SF_KEY=https://api.example.com' });
   const mm2 = makeMemModel({ store: st, tz: TZ, runnerOf: () => async () => assert.fail('查不过不该发'), keyOf: () => 'k', guard: s2 });
   assert.deepEqual(await mm2.prepare('a'), { text: '' });
+});
+
+test('v1.2.1：没单独设地址的 AI 用设置页那份（地址补 /chat/completions、Key 只给存 Key 时的地址）；页面没填不能打开；发之前地址要过 net 检查', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ta-mm-'));
+  dirs.push(dir);
+  const s = openStore({ dir, tz: TZ, now: () => local(2026, 11, 21, 3), talk: openTalk({ dir, now: () => 0 }) });
+  let fm = {}, netOk = true;
+  const made = [];
+  const guard = makeSlotGuard({ net: { okSync() {}, async check() { if (!netOk) throw Object.assign(new Error('地址指向局域网'), { safe: true }); } } });
+  const mm = makeMemModel({ store: s, tz: TZ, guard, svc: { read: () => ({ fm }) }, runnerOf: (o) => { made.push(o); return async () => '[]'; } });
+  assert.throws(() => mm.set('a', { on: true }), (e) => e.code === 400);
+  fm = { memo: { url: 'https://api.siliconflow.cn/v1', model: 'flash', key: 'pagek' } };
+  mm.set('a', { on: true });
+  assert.equal(mm.get('a').src, 'page');
+  s.add('a', { text: '她今天去体检了' }, 'me');
+  await mm.prepare('a');
+  assert.equal(made[0].url, 'https://api.siliconflow.cn/v1/chat/completions');
+  assert.equal(made[0].key, 'pagek');
+  fm = { memo: { url: 'https://other.example.com/v1', model: 'flash', key: 'pagek', keyAt: 'https://api.siliconflow.cn' } };
+  await mm.prepare('a');
+  assert.equal(made[1].key, '', 'Key 是给硅基的，地址换了就不带');
+  netOk = false;
+  assert.deepEqual(await mm.prepare('a'), { text: '' });
+  assert.equal(made.length, 2, '地址过不了检查就不发');
 });
