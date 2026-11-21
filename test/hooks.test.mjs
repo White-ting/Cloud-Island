@@ -370,9 +370,9 @@ test('召回连线：最像那条特别像时自动带连着的，先来处、�
   const i = rows.findIndex((r) => r.includes(`[${mid.id}]`));
   assert.ok(i > 0);
   assert.deepEqual(rows.slice(i + 1, i + 4), [
-    `  ↳ 它从这条来 [${root.id}]（记事）她养了一只橘猫`,
-    `  ↳ 从它生出来 [${w.id}]（念想）想看看它长什么样`,
-    `  ↳ 从它生出来 [${c2.id}]（经验）她说下次带去体检`,
+    `  ↳ 它从这条来 [${root.id}]（记事，11-15）她养了一只橘猫`,
+    `  ↳ 从它生出来 [${w.id}]（念想，11-15）想看看它长什么样`,
+    `  ↳ 从它生出来 [${c2.id}]（经验，11-15）她说下次带去体检`,
   ]);
   assert.ok(!c.includes(c1.id), '超过 3 条的不带');
   assert.ok(!c.includes(g.id), '归档的不带');
@@ -388,7 +388,7 @@ test('召回连线：最像那条特别像时自动带连着的，先来处、�
 test('召回连线：不够像就不展开，只标「连着几条」并提示 memory_read；已经在召回里的不重复算', async () => {
   const { h, mid } = chain();
   const c = (await h.before('a', { text: '周五买罐头吧' })).context;
-  assert.ok(c.includes(`[${mid.id}]（约定）每周五给团子买罐头（连着 4 条）`));
+  assert.ok(c.includes(`[${mid.id}]（约定，11-15）每周五给团子买罐头（连着 4 条）`));
   assert.ok(!c.includes('↳'));
   assert.match(c, /memory_read/);
 });
@@ -437,4 +437,16 @@ test('读一条（审稿补）：读念想放进这一轮的候选，接着说�
   const before = s.load('a').items.find((m) => m.id === w.id).hits || 0;
   h.after('a', { reply: '我刚才在想，想看看它长什么样', sid: 's1' });
   assert.equal(s.load('a').items.find((m) => m.id === w.id).hits, before + 1);
+});
+
+test('召回带日期：今年的写月-日，往年的写全年月日', async () => {
+  const { s, h, clock } = fresh();
+  clock.t = Date.UTC(2025, 10, 8, 4);
+  s.add('a', { kind: 'note', text: '去年冬天她第一次说起团子' }, 'me');
+  clock.t = Date.UTC(2026, 10, 8, 4);
+  s.add('a', { kind: 'note', text: '今年她又说起团子怕冷' }, 'me');
+  clock.t = Date.UTC(2026, 10, 20, 4);
+  const c = (await h.before('a', { text: '团子' })).context;
+  assert.match(c, /（记事，2025-11-08）去年冬天/);
+  assert.match(c, /（记事，11-08）今年她又说起/);
 });

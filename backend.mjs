@@ -11,7 +11,8 @@ import { openVec, makeEmbed } from './lib/vec.mjs';
 import { openTalk } from './lib/talk.mjs';
 import { openPersona } from './lib/persona.mjs';
 import { openDreams } from './lib/dreams.mjs';
-import { makeNight, makeRunner } from './lib/night.mjs';
+import { makeNight, makeRunner, makeApiRunner } from './lib/night.mjs';
+import { makeMemModel } from './lib/memmodel.mjs';
 import { openChat } from './lib/chat.mjs';
 import { openInbox } from './lib/inbox.mjs';
 import { openKnock, makeHandlers } from './lib/knock.mjs';
@@ -25,7 +26,7 @@ import { openFiles } from './lib/files.mjs';
 import { openLockwords } from './lib/lockwords.mjs';
 import { openVoice } from './lib/voice.mjs';
 import { openPush } from './lib/push.mjs';
-import { makeHelper } from './lib/helper.mjs';
+import { makeHelper, makeSlotGuard } from './lib/helper.mjs';
 import { makeNet } from './lib/net.mjs';
 
 export const VERSION = '1.0.0';
@@ -105,7 +106,11 @@ async function main() {
   const runner = makeRunner(cfg.night);
   // 待整理、日记、拍一拍；旁听的小模型（默认关，key 跟聊天一样从环境变量取）
   const digest = openDigest({ store }), diary = openDiary({ store }), pat = openPat({ store });
-  const helper = makeHelper({ store, digest, keyOf: cfg.keyOf, log, net, keyOrigins: cfg.helperKeyOrigins });
+  // 网页设的小模型（旁听的、记忆小模型）共用一套检查：地址过 net，Key 要在 HELPER_KEY_ORIGINS 登记过能发到哪
+  const slotGuard = makeSlotGuard({ net, keyOrigins: cfg.helperKeyOrigins });
+  const helper = makeHelper({ store, digest, keyOf: cfg.keyOf, log, guard: slotGuard });
+  // 记忆小模型：夜里整理记忆前先出一段补充（打标、同一件事、到日子的、印象草稿）。每个 AI 各自设，默认关
+  const memModel = makeMemModel({ store, tz: cfg.tz, keyOf: cfg.keyOf, runnerOf: makeApiRunner, log, guard: slotGuard });
   // 主动找人：设置、守门、TA 自己定的回头看。总开关默认关
   const knock = openKnock({ store, dir: cfg.dataDir, tz: cfg.tz, info: (ai) => chat.info(ai) });
   const hooks = makeHooks({ store, tz: cfg.tz, persona, dreams, later: knock.later, digest, diary, pat, helper });
@@ -122,7 +127,7 @@ async function main() {
   try { const n = chat.boot(); if (n) log('散场记', `重启后重新挂上 ${n} 个`); } catch (e) { log('散场记重新挂定时器出错', e.message); }
   // 收件箱：会叫醒 TA 的事（敲门、空下来、夜里、回头看）先进这张表，一个 AI 一次做一件；TA 正在回她的话时不取
   let inbox = null;
-  const night = makeNight({ store, persona, dreams, digest, diary, runner, tz: cfg.tz, dir: cfg.dataDir, log, enqueue: (ai, x) => inbox.put(ai, x) });
+  const night = makeNight({ store, persona, dreams, digest, diary, runner, tz: cfg.tz, dir: cfg.dataDir, log, enqueue: (ai, x) => inbox.put(ai, x), memModel });
   inbox = openInbox({ dir: cfg.dataDir, store, handlers: makeHandlers({ knock, chat, night }), busy: (ai) => chat.busy(ai) || night.busy(ai), log, auto: true });
   inbox.boot(); // 上次没做完的（进程断了）按挂了处理
   const mcp = makeMcp({ hooks, version: VERSION, log });
@@ -130,7 +135,7 @@ async function main() {
   const lockwords = openLockwords({ dir: cfg.dataDir, folder: (ai) => store.folder(ai), ask: (ai, p) => chat.ask(ai, p, { what: 'lockwords' }), log }); // 开屏字幕
   const voice = openVoice({ dir: cfg.dataDir, svc, folder: (ai) => store.folder(ai), files, log, net }); // 出声、认字
   let srv;
-  try { srv = createServer({ cfg, store, hooks, persona, night, dreams, chat, inbox, knock, mcp, digest, diary, pat, helper, svc, files, translate, lockwords, voice, push, log }); } catch (e) {
+  try { srv = createServer({ cfg, store, hooks, persona, night, dreams, chat, inbox, knock, mcp, digest, diary, pat, helper, memModel, svc, files, translate, lockwords, voice, push, log }); } catch (e) {
     console.error('没启动：' + e.message); process.exit(1);
   }
   const addr = await srv.listen();
