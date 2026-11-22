@@ -36,7 +36,10 @@ test('设置里的服务：Key 只进不出，留空不换，null 清掉，文�
     r = await g.call('PUT', '/api/svc/push', { route: 'bark', bark: { dev: 'DEVKEY123456789', aes: 'a'.repeat(32) } });
     assert.deepEqual(r.body, { route: 'bark', bark: { url: 'https://api.day.app', hasDev: true, hasAes: true } });
     assert.equal((await g.call('PUT', '/api/svc/push', { bark: { aes: 'short' } })).status, 400);
-    assert.deepEqual((await g.call('PUT', '/api/svc/opts', { callSvc: 'own', asrWords: '阿岛, 小满' })).body, { callSvc: 'own', asrWords: '阿岛, 小满' });
+    assert.deepEqual((await g.call('PUT', '/api/svc/opts', { callSvc: 'own', asrWords: '阿岛, 小满' })).body, { callSvc: 'own', asrWords: '阿岛, 小满', keepVoice: true });   // keepVoice：仓库存不存 TA 的声音，默认存
+    assert.equal((await g.call('PUT', '/api/svc/opts', { keepVoice: 'yes' })).status, 400);
+    assert.equal((await g.call('PUT', '/api/svc/opts', { keepVoice: false })).body.keepVoice, false);
+    assert.equal((await g.call('PUT', '/api/svc/opts', { keepVoice: true })).body.keepVoice, true);
     const all = await g.call('GET', '/api/svc');
     assert.ok(!JSON.stringify(all.body).includes(KEY) && !JSON.stringify(all.body).includes('DEVKEY'));
     assert.equal(all.body.callSvc, 'own');

@@ -112,6 +112,29 @@ body.stson #sts{transform:none}body.th-b #sts{background:#fffbf9}body.th-d #sts{
 .sts-i .stio{flex-basis:100%;margin:6px 0 2px;max-height:50vh;overflow-y:auto;-webkit-overflow-scrolling:touch}.sts-zh{flex-basis:100%;font-size:13.5px;color:var(--c-mute);white-space:pre-wrap;-webkit-user-select:text;user-select:text}
 
 /* 全屏看图、看视频 */
+#wv{--wv-bg:#f4f5f8;--wv-ink:#1f2328;--wv-mute:#6b7280;--wv-btn:rgba(0,0,0,.07);position:fixed;inset:0;z-index:9500;display:flex;flex-direction:column;background:var(--wv-bg);color:var(--wv-ink)}
+@media (prefers-color-scheme:dark){#wv{--wv-bg:#1c1c1e;--wv-ink:#f2f2f4;--wv-mute:#a1a1aa;--wv-btn:rgba(255,255,255,.12)}}
+#wv[hidden]{display:none}
+.wv-bar{display:flex;align-items:center;gap:8px;padding:calc(env(safe-area-inset-top,0px) + 8px) 12px 8px;border-bottom:1px solid rgba(128,128,128,.2);background:var(--wv-bg)}
+.wv-x,.wv-out{flex:none;border:0;border-radius:99px;padding:7px 14px;font:inherit;font-size:13.5px;color:var(--wv-ink);background:var(--wv-btn)}
+.wv-x{font-weight:600}
+.wv-x:active,.wv-out:active{transform:scale(.95)}
+.wv-t{flex:1;min-width:0;text-align:center;font-size:13px;color:var(--wv-mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wv-note{font-size:12px;color:var(--wv-mute);text-align:center;padding:6px 14px}
+#wv iframe{flex:1;width:100%;border:0;background:#fff}
+a.lk{color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;word-break:break-all;-webkit-touch-callout:none}
+#pv .pvx{position:absolute;left:14px;top:calc(env(safe-area-inset-top,0px) + 14px);border:0;border-radius:99px;padding:8px 15px;font:inherit;font-size:14px;color:#fff;background:rgba(255,255,255,.18)}
+.rp-tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}.rp-tabs::-webkit-scrollbar{display:none}
+.rp-t{flex:none;display:flex;align-items:center;gap:5px;height:32px;padding:0 13px;border:0;border-radius:16px;background:var(--c-glass);color:var(--c-ink);font:inherit;font-size:14px}.rp-t small{font-size:11px;color:var(--c-mute)}
+.rp-t.on{background:var(--c-me);color:var(--c-meink)}.rp-t.on small{color:inherit;opacity:.75}
+.rp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}.rp-c{position:relative;padding:0;border:0;background:rgba(128,128,128,.15);border-radius:10px;overflow:hidden;aspect-ratio:1}
+.rp-c img{width:100%;height:100%;object-fit:cover;display:block}.rp-c small{position:absolute;left:5px;bottom:4px;font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.rp-c.v::after{content:'▶';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.row.rp-v{align-items:flex-start;height:auto;min-height:54px;padding:12px 14px}   /* 写 .row.rp-v：不然被后面的 .row（定高 54）盖掉，长的字会溢出来叠到下面几行上 */
+.rp-v>span{flex:1;min-width:0;font-size:15px;line-height:1.45;overflow-wrap:anywhere}.rp-v .rn{display:block;font-size:12.5px;line-height:1.45;color:var(--c-mute);margin-top:3px}
+.rp-v .rt{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.rp-v.on .rt{display:block}   /* 原话最多三行，在放的那条全展开 */
+.rp-pl{flex:none;width:26px;font-weight:400;color:var(--c-me);font-size:13px;padding-top:2px}.rp-v.on .rp-pl{color:#d0453a}.rp-sub{padding-left:28px}
+.rp-more{width:100%;margin-top:10px;background:var(--c-glass);color:var(--c-ink)}
 #pv{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top) + 20px) 10px calc(env(safe-area-inset-bottom) + 76px)}#pv[hidden]{display:none}
 #pv img,#pv video{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
 #pv .pvs{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 18px);transform:translateX(-50%);min-width:120px;height:42px;padding:0 22px;border:0;border-radius:21px;background:rgba(255,255,255,.18);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);color:#fff;font:inherit;font-size:15px}#pv .pvs:disabled{opacity:.6}
@@ -578,6 +601,8 @@ body.th-d .sw.on{background:#7f8ff0}
 .nw+.nw{box-shadow:inset 0 1px 0 rgba(128,128,128,.14)}
 .nw small{display:flex;gap:6px;margin-top:3px;font-size:12px;color:var(--c-mute)}
 .nw small b{font-weight:500;color:#cf7f90}
+.nw .nw-why{display:block;font-style:normal;font-size:13px;color:var(--c-mute);margin-top:2px}
+.nw small{flex-wrap:wrap}
 .nw.priv{color:var(--c-mute);font-style:italic;font-size:14px}
 .mm-two{display:flex;gap:8px}.mm-two .btn{flex:1;background:var(--c-glass);color:var(--c-ink)}
 .mm-pg{display:flex;align-items:center;justify-content:center;gap:18px;margin:14px 0 4px;font-size:14px;color:var(--c-mute)}
@@ -855,6 +880,59 @@ body.in .hint{opacity:1}
 .pond .pd-turn:active{transform:scale(.95)}
 
 .pond{margin:2px 0 10px}
+/* 小山：默认不变；点远山 → 镜头拉近（远山那层放大、水那层淡出），记事长成的山从地里冒出来，螺旋摆、最中间最早 */
+.pond #pd-bg{transition:transform 1.1s cubic-bezier(.45,0,.15,1);transform-origin:57% 46%}
+.pond.zoom #pd-bg{transform:none}   /* 远山不放大：放大 1.9 倍（带毛边滤镜）+ 山脊滤镜，iPhone 上换画面那一帧要画 4 秒多，云停着然后一下子没了。有云遮着，不用放大 */
+.pond #pd-sv{transition:opacity .55s}
+.pond.zoom #pd-sv{opacity:0;pointer-events:none}
+.pond #pd-hl{opacity:0;pointer-events:none;transition:opacity .6s .3s}
+.pond.zoom #pd-hl{opacity:1;pointer-events:auto}
+.pond .pd-hill>g{transform:translateY(140px);transition:transform 1s cubic-bezier(.2,1.1,.35,1)}
+.pond.zoom .pd-hill>g{transform:none}
+.pond .pd-hill{cursor:pointer} .pond .pd-hill.on>g{filter:brightness(1.08)}
+.pond .pd-back{position:absolute;left:10px;top:10px;padding:7px 13px;border:0;border-radius:99px;font:inherit;font-size:12.5px;color:var(--ink);background:color-mix(in srgb,var(--panel,#fff) 82%,transparent);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);opacity:0;pointer-events:none;transition:opacity .4s}
+.pond.zoom .pd-back{opacity:1;pointer-events:auto;transition-delay:.5s}
+.pond.zoom .pd-turn,.pond.zoom .pd-lvl{opacity:0;pointer-events:none}
+.pond .pd-turn,.pond .pd-lvl{transition:opacity .4s}
+.pond .pd-hz{cursor:zoom-in}
+.pond .pd-cvw{position:absolute;inset:0;z-index:20;pointer-events:none;overflow:hidden;border-radius:inherit}   /* 明确压在山那层上面（Safari 里散开时山会盖住云，看着像一下子没了） */
+.pond .pd-back,.pond .pd-turn,.pond .pd-lvl{z-index:21}
+.pond .pd-cs{position:absolute;inset:0;will-change:transform;transition:transform .6s cubic-bezier(.45,.05,.3,1)}
+.pond .pd-cs svg{position:absolute;inset:0;width:100%;height:100%}
+.pond .pd-cs.cl{transform:translate3d(-102%,0,0)} .pond .pd-cs.cr{transform:translate3d(102%,0,0)}
+.pond.cloud .pd-cs.cl,.pond.cloud .pd-cs.cr{transform:translate3d(0,0,0)}
+/* 上中下三截一起合拢、一起打开 */
+.pond.cloud .pd-back,.pond.cloud .pd-turn,.pond.cloud .pd-lvl{opacity:0!important;pointer-events:none}
+.pond.snap #pd-bg,.pond.snap #pd-sv,.pond.snap #pd-hl,.pond.snap .pd-back,.pond.snap .pd-turn,.pond.snap .pd-lvl{transition:none!important}
+.pond .pd-hlab{font-size:13px;font-weight:600;fill:var(--hull,#5a3d27);text-anchor:middle;paint-order:stroke;stroke:var(--sky2);stroke-width:4px;stroke-opacity:.85;opacity:0;transform:translateY(6px);transition:opacity .35s,transform .35s;pointer-events:none}
+.pond.labs .pd-hlab{opacity:.92;transform:none}
+/* 这座山在说：点山头，从屏幕下方升起一块木板铺满全屏，一条条日期 + 正文，最后「（结束了）」，右下角「看完了」 */
+.hboard{position:fixed;inset:0;z-index:9000;perspective:1400px;perspective-origin:50% 100%}
+.hboard .hb-shade{position:absolute;inset:0;background:rgba(35,20,8,0);transition:background .8s}
+.hboard.on .hb-shade{background:rgba(35,20,8,.38)}
+/* 一块有厚度的木板：先后仰着、从屏幕底下升上来，升到位放平；上沿那条亮边是板的厚度，底下一圈投影 */
+.hboard .hb-plank{position:absolute;inset:0;transform-origin:50% 100%;transform:translateY(108%) rotateX(32deg);transition:transform .95s cubic-bezier(.16,.9,.2,1);
+  border-radius:20px 20px 0 0;box-shadow:0 -22px 46px rgba(40,22,8,.38),0 -2px 0 rgba(255,240,210,.35)}
+.hboard.on .hb-plank{transform:none}
+.hboard.out .hb-plank{transition:transform .75s cubic-bezier(.55,0,.8,.45)}
+.hboard .hb-edge{position:absolute;left:0;right:0;top:0;height:16px;border-radius:20px 20px 0 0;background:linear-gradient(180deg,#f6e2bf,#c39467 70%,#9b6c42);box-shadow:0 3px 4px rgba(70,40,15,.35)}
+.hboard .hb-w{position:absolute;inset:16px 0 0 0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  color:#4b3421;padding:calc(env(safe-area-inset-top,0px) + 40px) 30px calc(env(safe-area-inset-bottom,0px) + 120px);
+  background:repeating-linear-gradient(180deg,transparent 0 131px,rgba(92,58,28,.07) 131px 132px,rgba(255,236,200,.12) 132px 133px),
+    repeating-linear-gradient(180deg,rgba(120,78,38,.05) 0 1px,transparent 1px 7px,rgba(120,78,38,.035) 7px 8px,transparent 8px 19px),
+    radial-gradient(120% 70% at 30% 20%,rgba(255,240,210,.35),transparent 70%),linear-gradient(180deg,#e7c99b,#d7b07a 55%,#c99c66);
+  box-shadow:inset 10px 0 18px -10px rgba(70,40,15,.35),inset -10px 0 18px -10px rgba(70,40,15,.35)}
+.hboard .hb-h{font-size:22px;letter-spacing:.08em;margin:0 0 26px;font-weight:600}
+.hboard .hb-d{font-size:13px;opacity:.62;letter-spacing:.06em;margin-top:22px}
+.hboard .hb-t{font-size:16.5px;line-height:1.85;margin-top:4px;white-space:pre-wrap;word-break:break-word}
+.hboard .hb-end{margin-top:34px;text-align:center;opacity:.55;letter-spacing:.2em}
+.hboard .hb-ok{position:absolute;right:30px;bottom:calc(env(safe-area-inset-bottom,0px) + 34px);border:0;border-radius:99px;padding:10px 20px;font:inherit;font-size:15px;color:#fbf1e0;
+  background:#7a5233;box-shadow:0 3px 10px rgba(60,35,15,.3);opacity:0;transform:translateY(20px);transition:opacity .4s .45s,transform .4s .45s}
+.hboard.on .hb-ok{opacity:1;transform:none} .hboard.out .hb-ok{transition-delay:0s}
+.hboard .hb-ok:active{transform:scale(.95)}
+@media (prefers-reduced-motion:reduce){.hboard .hb-plank,.hboard .hb-ok,.hboard .hb-shade{transition-duration:.01s;transition-delay:0s}}
+.pond .pd-hn{font-size:13px;fill:var(--ink);text-anchor:middle;opacity:.75}
+@media (prefers-reduced-motion:reduce){.pond #pd-bg,.pond .pd-hill>g{transition-duration:.01s}}
 .nw-fold{display:flex;justify-content:space-between;width:100%;padding:10px 12px;font-size:13px;color:var(--c-mute)}
 #nwCap:empty{display:none}
 #nwCap{margin-bottom:4px}
@@ -1010,6 +1088,7 @@ body.sk-c .s1 i,body.sk-c .s1 b{background:#e9e6e0}body.sk-c .s1 u{border-color:
   </div>
 </div>
 
+<script src="ears.js"></script><!-- 量录音：时长、停顿、音高、起伏，后端拿去跟她平时比 -->
 <script>
 const $ = (s) => document.querySelector(s);
 const wel = $('#wel'), orn = $('#orn'), pet = $('#pet'), inp = $('#inp');
@@ -1368,8 +1447,19 @@ const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls)
 // m.md 为真的消息按 Markdown 画（**粗体** 不当成动作拆开、「- 」列表画成列表），不拆动作。
 // ![](网址) 画成图：只认同源的（相对地址，或者跟这张网页同一个域名），外站的照旧是链接
 const sameOrigin = (u) => { try { return new URL(u.replace(/&amp;/g, '&'), location.href).origin === location.origin; } catch (e) { return false; } };
+// 光秃秃的网址也做成链接（气泡不能长按复制一部分，要跳转的就做成超链接）。只认前面是开头、空白、中文冒号逗号的，
+// 免得碰到 ](网址)、src="网址" 里那一截；结尾的标点不算进去
+const URL_BARE = /(^|[\s：，、])(https?:\/\/[^\s<>"）)，。、；！？「」]+)/g;
+function urlA(_, pre, u) { const m = /[.,;:!?]+$/.exec(u), tail = m ? m[0] : ''; if (tail) u = u.slice(0, -tail.length); return pre + '<a class="lk" href="' + u + '">' + u + '</a>' + tail; }
+// 不是 Markdown 的气泡（TA 的话、你自己的话）：把一段字里的网址换成链接节点
+function linkText(node, text) {
+  let k = 0; String(text).replace(/https?:\/\/[^\s<>"）)，。、；！？「」]+/g, (u, at) => { const m = /[.,;:!?]+$/.exec(u); if (m) u = u.slice(0, -m[0].length);
+    if (at > k) node.appendChild(document.createTextNode(text.slice(k, at))); const a = el('a', 'lk', u); a.href = u; node.appendChild(a); k = at + u.length; });
+  if (k < text.length) node.appendChild(document.createTextNode(text.slice(k)));
+  return node;
+}
 const mdInline = (s) => esc(s).replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, (all, alt, u) => sameOrigin(u) ? '<img class="mdimg" src="' + u + '" alt="' + alt + '">' : all).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
-  .replace(/(^|[^*\w])\*([^*\n]+)\*(?![*\w])/g, '$1<i>$2</i>').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  .replace(/(^|[^*\w])\*([^*\n]+)\*(?![*\w])/g, '$1<i>$2</i>').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a class="lk" href="$2">$1</a>').replace(URL_BARE, urlA);
 const MD_LI = /^\s*([-*+]|\d+[.)])\s+/;
 function mdBlocks(t) {                                       // → [{ h: 是不是标题, html }]
   const out = [], L = String(t || '').split('\n'); let i = 0, para = [];
@@ -1408,9 +1498,9 @@ function units(m) {
     if (m.vsub) { const x = el('div', 'vsub' + (m.vfail ? ' fail' : ''), m.vsub); out.push(x); }
     return out; }   // 语气：听语音的模型听出来的情绪、语速，长按点「语气」才显示在语音条上方
   const ps = paras(m.vers[m.cur]);
-  if (mode === 'seg') return ps.flatMap(p => p.map(x => { if (x.act) return el('div', 'actl', x.s); const b = el('div', 'bub'); b.appendChild(el('p', '', x.s)); return b; }));
+  if (mode === 'seg') return ps.flatMap(p => p.map(x => { if (x.act) return el('div', 'actl', x.s); const b = el('div', 'bub'); b.appendChild(linkText(el('p'), x.s)); return b; }));
   const b = el('div', 'bub');
-  ps.forEach(p => { const pe = el('p'); p.forEach(x => pe.appendChild(x.act ? el('i', 'act', x.s) : el('span', '', x.s))); b.appendChild(pe); });
+  ps.forEach(p => { const pe = el('p'); p.forEach(x => pe.appendChild(x.act ? el('i', 'act', x.s) : linkText(el('span'), x.s))); b.appendChild(pe); });
   return [b];
 }
 const ICON = {
@@ -1420,14 +1510,20 @@ const ICON = {
 };
 ICON.tone = '<path d="M3 12c1.500-5 3-5 4.500 0s3 5 4.500 0 3-5 4.500 0 3 5 4.500 0"/>';
 ICON.play = '<path d="M8 5.500l10.500 6.500L8 18.500z"/>';
-const NAMES = { tone: '语气', play: '再听一遍', copy: '复制', keep: '收藏', trans: '翻译', redo: '重新生成', quote: '引用' };
+ICON.edit = '<path d="M4 20h4L19 9a2.800 2.800 0 0 0-4-4L4 16z"/><path d="M13.500 6.500l4 4"/>';
+const NAMES = { tone: '语气', play: '再听一遍', copy: '复制', keep: '收藏', trans: '翻译', redo: '重新生成', quote: '引用', edit: '改这句' };
+// 她最后一句（打字的、存好了的）能改：改完她那句之后的回复收进归档，照改过的重新回答（接上后端、不是 dsh 的 TA 才有）
+function herLast(m) {
+  if (!liveOn() || isDsh(aiCur) || !m || m.who !== 'me' || m.voice || !m.bid) return false;
+  return data.filter(x => x.who === 'me').pop() === m;
+}
 function tail(col, m) {                                      // 气泡下面：译文、「…」（无气泡时）、长按出来的那排图标
   if (m.tr && m.voice) { col.appendChild(el('div', 'tr', m.vers[0])); if (m.zh) col.appendChild(el('div', 'tr', m.zh)); }   // 语音条：转成文字，有译文的再加一行译文
   else if (m.tr) col.appendChild(el('div', 'tr', LIVE ? (m.trText || '在翻成中文…') : '（接上功能以后，译文显示在这里）'));
   if (m.cut) col.appendChild(el('div', 'tr', '停下了'));
   col.appendChild(el('button', 'more', '···'));
   const a = el('div', 'acts');
-  (m.voice ? (m.who === 'ai' ? ['trans', 'quote'] : ['tone', 'trans', 'quote']) : m.who === 'ai' ? (m.spoken || liveOn() ? ['play'] : []).concat(['copy', 'trans'], m.md || isDsh(aiCur) ? [] : ['redo'], ['quote']) : ['copy', 'trans', 'quote']).forEach(   // 电话里说的话多一个「再听一遍」，排最前
+  (m.voice ? (m.who === 'ai' ? ['trans', 'quote'] : ['tone', 'trans', 'quote']) : m.who === 'ai' ? (m.spoken || liveOn() ? ['play'] : []).concat(['copy', 'trans'], m.md || isDsh(aiCur) ? [] : ['redo'], ['quote']) : ['copy', 'trans'].concat(herLast(m) ? ['edit'] : [], ['quote'])).forEach(   // 电话里说的话多一个「再听一遍」，排最前
 k => { const b = el('button'); b.dataset.act = k; b.title = NAMES[k]; b.innerHTML = '<svg viewBox="0 0 24 24">' + ICON[k] + '</svg>'; a.appendChild(b); });
   if (m.vers.length > 1) { const v = el('span', 'ver'); v.innerHTML = '<button data-act="prev">‹</button>' + (m.cur + 1) + '/' + m.vers.length + '<button data-act="next">›</button>'; a.appendChild(v); }
   col.appendChild(a);
@@ -1544,7 +1640,7 @@ $('#gsheet').addEventListener('click', (e) => {
 const RIC = { steps: '<path d="M5 8l4 4-4 4M12 16h7"/>', notes: '<path d="M4 20l4-1L19 8l-3-3L5 16z"/>', digest: '<path d="M6 4h9l3 3v13H6zM9 10h6M9 14h6"/>' };
 const KN = { note: '记事', pact: '约定', view: '看法', ask: '疑问', exp: '经验', wish: '念想', habit: '习惯' };
 const noteLine = (n) => n.priv ? '记下一条私人的念想' : n.kind === 'wish' ? ({ add: n.leaf ? '飘来一片落叶' : '记下一条念想', up: '这条念想更浓了', down: '淡了一点', gone: '放下了', done: '了了' }[n.op] || '动了一条念想')
-  : ({ add: '记下了：' + KN[n.kind], edit: '改了一条' + KN[n.kind], done: n.kind === 'ask' ? '有一个疑问有答案了' : '有一条' + KN[n.kind] + '做到了', gone: '收起了一条' + KN[n.kind] }[n.op] || '动了一条' + KN[n.kind]);
+  : ({ add: '记下了：' + KN[n.kind], edit: '改了一条' + KN[n.kind], done: n.kind === 'ask' ? '有一个疑问有答案了' : '有一条' + KN[n.kind] + '做到了', gone: '收起了一条' + KN[n.kind], hill: '这件事在心里更重了，岛上的山高了一点' }[n.op] || '动了一条' + KN[n.kind]);
 // 思考翻译：点开思考就自己翻，中文排在原文底下。后端 /api/translate 存着翻过的，第二次点开是秒出的
 const thzOn = (m) => LIVE && m.to && /[A-Za-z]{3}/.test(m.think);
 function thkEl(m) { const b = el('button', 'thk' + (m.to ? ' open' : '')); b.dataset.thk = m.id; b.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.600 5.600l12.800 12.800M18.400 5.600L5.600 18.400"/></svg><span>' + esc(m.to ? m.think : m.think.split('\n')[0]) + '</span>'
@@ -1807,7 +1903,7 @@ function attEls(m) {                                          // 消息里：照
   if (!m.atts) return [];
   const out = [], ims = m.atts.filter(a => a.kind === 'img');
   if (ims.length) { const p = el('div', 'pics' + (ims.length === 1 ? ' one' : '')); ims.forEach(a => { const i = el('img'); i.src = a.url; i.dataset.pv = a.url; p.appendChild(i); }); out.push(p); }
-  m.atts.filter(a => a.kind !== 'img').forEach(a => { const b = el(a.url ? 'a' : 'div', 'bub fcard'); if (a.url) { b.href = a.url; b.target = '_blank'; b.rel = 'noopener'; } b.append(el('b', '', a.name), el('small', '', a.size)); out.push(b); });
+  m.atts.filter(a => a.kind !== 'img').forEach(a => { const b = el(a.url ? 'a' : 'div', 'bub fcard'); if (a.url) { b.href = a.url; b.dataset.wvt = a.name || ''; } b.append(el('b', '', a.name), el('small', '', a.size)); out.push(b); });
   return out;
 }
 const pickF = document.createElement('input'); pickF.type = 'file'; pickF.hidden = true; document.body.appendChild(pickF);
@@ -1963,6 +2059,7 @@ function voiceSend(blob, secs) {
   const me = Object.assign(M('me', ''), { voice: fmt(Math.max(1, Math.round(secs))), vurl: URL.createObjectURL(blob), vsub: '在认字…' });
   data.push(me); const e1 = msgEl(me); e1.classList.add('rise'); log.appendChild(e1); down();
   const i0 = aiCur, re = () => { if (aiCur === i0 && grpCur < 0 && log.querySelector('.msg[data-id="' + me.id + '"]')) redraw(me, false); };
+  const measP = earsUp(blob);
   const go = async () => {
     if (busy || sendRun) return toast('等 TA 说完再点');
     me.vsub = '在认字…'; me.vfail = false; me.retry = null; re();
@@ -1970,7 +2067,12 @@ function voiceSend(blob, secs) {
     let st; try { st = await sttUp(blob, false); }
     catch (e) { sendRun = false; busySet(false); me.vsub = (e.j && e.j.file ? '' : '没传上去：') + e.message + ' · 点这里重试'; me.vfail = true; me.retry = go; return re(); }
     me.vers[me.cur] = st.text || ''; me.vsub = st.text ? '' : '没认出字，照样发给 TA 了'; re();
-    if (aiCur === i0 && grpCur < 0) await liveSend(me, st.text || '', { voice: { file: st.file, dur: Math.round(secs * 10) / 10 } });
+    const ea = await measP, meas = ea.meas;
+    if (ea.wav) { me.vsub = '在听语气…'; re(); }
+    const tone = await moodUp(ea.wav, st.text || '', false, 15);
+    if (tone) me.tone = tone;
+    if (ea.wav) { me.vsub = st.text ? '' : '没认出字，照样发给 TA 了'; re(); }
+    if (aiCur === i0 && grpCur < 0) await liveSend(me, st.text || '', { voice: Object.assign({ file: st.file, dur: Math.round(secs * 10) / 10 }, meas ? { meas } : {}, tone ? { tone } : {}) });
     sendRun = false; busySet(false);
   };
   go();
@@ -1989,9 +2091,42 @@ $('#box').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isCom
 document.addEventListener('touchstart', () => {}, { passive: true });   // 有了它，手机上按下去的样子（:active）才出得来
 // 长按气泡出图标；无气泡时点「…」
 // 全屏看图、看视频，底下「保存」：手机浏览器里用分享面板（里面有「存储图像」），不支持就新页面打开
+// 网页浮层：链接点了在云岛里打开一个网页，有关闭的地方（文件预览也要能关）。
+// 盖满屏幕，顶上一条：左边「关闭」、中间是哪个页面、右边「用浏览器打开」。不新开窗口（装到主屏幕的网页 App 里新开窗口回不来）。
+// 外面的网站很多不让被放在别的页面里，看不出来（浏览器不告诉我们），所以外站下面一直写一行小字：打不开就点右上角。
+// sandbox 不给 allow-top-navigation：里面的页面不能把整个云岛换走
+const WV = (() => {
+  const v = document.createElement('div'); v.id = 'wv'; v.hidden = true;
+  v.innerHTML = '<div class="wv-bar"><button class="wv-x" type="button">关闭</button><span class="wv-t"></span><button class="wv-out" type="button">用浏览器打开</button></div>'
+    + '<div class="wv-note" hidden>有的网站不让在这里打开，空白就点「用浏览器打开」</div>'
+    + '<iframe referrerpolicy="no-referrer"></iframe>';
+  document.body.appendChild(v);
+  const fr = v.querySelector('iframe'), t = v.querySelector('.wv-t'), note = v.querySelector('.wv-note'), out = v.querySelector('.wv-out');
+  let url = '';
+  function open(u, title) {
+    let x; try { x = new URL(u, location.href); } catch (e) { return toast('这个链接打不开'); }
+    if (!/^https?:$/.test(x.protocol)) return toast('这个链接打不开');
+    url = x.href; const same = x.origin === location.origin;
+    t.textContent = title || (same ? decodeURIComponent(x.pathname.split('/').filter(Boolean).pop() || x.host) : x.host);
+    if (same) fr.removeAttribute('sandbox'); else fr.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-downloads');   // 自己的页面、文件不加（加了 PDF 在有的浏览器里不显示）
+    note.hidden = same; fr.src = url; v.hidden = false; document.body.classList.add('wvon', 'pvon');
+  }
+  function close() { v.hidden = true; fr.src = 'about:blank'; document.body.classList.remove('wvon'); if (document.getElementById('pv').hidden) document.body.classList.remove('pvon'); }
+  v.querySelector('.wv-x').onclick = close;
+  out.onclick = () => { window.open(url, '_blank', 'noopener'); };
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !v.hidden) close(); });
+  return { open, close };
+})();
+// 气泡里的链接、文件卡片：点了走浮层（长按还是操作栏）
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('a.lk, a.fcard'); if (!a || !a.getAttribute('href')) return;
+  e.preventDefault(); e.stopPropagation();
+  if (Date.now() - (window.__lpAt || 0) < 700) return;        // 刚长按出了操作栏，松手那一下不算点链接
+  WV.open(a.getAttribute('href'), a.dataset.wvt || '');
+}, true);
 const PV = (() => {
   const v = document.createElement('div'); v.id = 'pv'; v.hidden = true;
-  v.innerHTML = '<img alt=""><video playsinline controls preload="metadata" hidden></video><button class="pvs" type="button">保存</button>';
+  v.innerHTML = '<img alt=""><video playsinline controls preload="metadata" hidden></video><button class="pvx" type="button">关闭</button><button class="pvs" type="button">保存</button>';
   document.body.appendChild(v);
   const im = v.querySelector('img'), vd = v.querySelector('video'), sv = v.querySelector('.pvs');
   let url = '', blob = null;
@@ -2017,6 +2152,7 @@ const PV = (() => {
   function close() { vd.pause(); vd.removeAttribute('src'); v.hidden = true; document.body.classList.remove('pvon'); }
   sv.onclick = (e) => { e.stopPropagation(); save(); };
   vd.onclick = (e) => e.stopPropagation();
+  v.querySelector('.pvx').onclick = (e) => { e.stopPropagation(); close(); };   // 预览要有能关的地方（点空白处也照旧能关）
   v.onclick = close;
   return { open, close };
 })();
@@ -2045,7 +2181,7 @@ log.addEventListener('pointerdown', (e) => {
   if (!b || b.closest('.plain') || e.target.closest('.mdpre')) return;   // 代码块里长按是选字，不弹操作栏
   lpBub = b; b.classList.add('press'); sx = e.clientX; sy = e.clientY;
   lp = setTimeout(() => {
-    lp = null; b.classList.remove('press');
+    lp = null; window.__lpAt = Date.now(); b.classList.remove('press');
     const msg = b.closest('.msg'); closeAll(msg); msg.classList.add('open');
     picked = b.classList.contains('md') ? [...b.children].filter(x => !x.classList.contains('mdpre')).map(x => x.textContent).join('\n') : [...b.querySelectorAll('p')].map(p => p.textContent).join(' ');   // 分段气泡时，引用、复制的就是按住的那一段
     if (navigator.vibrate) navigator.vibrate(8);
@@ -2073,7 +2209,7 @@ log.addEventListener('click', (e) => {
   if (act === 'play') {                                      // 再听一遍：后端用这个 AI 的声音念（POST /api/voice/tts，回音频字节）。*动作* 不念
     msg.classList.remove('open'); if (!liveOn()) return toast('接上后端以后才能念');
     const say = (picked || m.vers[m.cur]).replace(/\*[^*\n]+\*/g, ' ').replace(/\s+/g, ' ').trim(); if (!say) return;
-    sayUnlock(); toast('在念…'); ttsBlob(AIS[aiCur].id, say).then(playBlob).catch(er => toast('没念成：' + er.message)); }
+    sayUnlock(); toast('在念…'); ttsBlob(AIS[aiCur].id, say, false, true).then(playBlob).catch(er => toast('没念成：' + er.message)); }
   else if (act === 'copy') { msg.classList.remove('open'); copyText(m.md && (mode !== 'seg' || picked === bare(m.vers[m.cur]) || !picked.trim()) ? m.vers[m.cur] : text).then(ok => toast(ok ? '复制了' : '没复制成')); }   // Markdown 的话复制原样（代码块、列表符号都在）
   else if (act === 'cxf' || act === 'cxt') { msg.classList.remove('open'); ctxMark(act === 'cxf' ? 'from' : 'to', m.id); }
   else if (act === 'trans' && LIVE && !m.voice) {             // 接上后端时真翻（/api/translate），译文排在气泡下面；再点一下收起
@@ -2086,6 +2222,16 @@ log.addEventListener('click', (e) => {
   else if (act === 'trans') { m.tr = !m.tr; redraw(m, false); }
   else if (act === 'tone') { m.toneOn = !m.toneOn; redraw(m, false); }
   else if (act === 'quote') { setQuote({ id: m.id, text }); msg.classList.remove('open'); $('#box').focus(); }
+  else if (act === 'edit' && herLast(m)) {
+    msg.classList.remove('open'); if (busy) return toast('等 TA 说完再改');
+    const old = m.vers[m.cur] || '';
+    dlg({ title: '改这一句', text: '改完 ' + AI + ' 会照改过的重新回答，后面的回复收进归档（不删）' + ((m.atts || []).length ? '；图片照旧带着' : '') + '。', fields: [{ type: 'textarea', value: old }], ok: '发出去' }).then(v => {
+      const t = v && String(v[0] || '').trim(); if (!t || t === old.trim() || busy) return;
+      const k = data.indexOf(m); if (k < 0) return;
+      data.splice(k + 1); m.vers[m.cur] = t; m.tr = false; renderAll();
+      const body = { id: m.bid, text: t }; if (OPTS.time) { const last = data.filter(x => x.bid && x !== m).pop(); body.timeTag = timeTag(last ? last.t : 0); }
+      liveReply('/api/chat/' + aiKey(aiCur) + '/rewind', body, null);
+    }); }
   else if (act === 'redo' && liveOn()) { if (busy) return; msg.classList.remove('open'); if (!m.bid) return toast('这一句还没存好'); liveReply('/api/chat/' + aiKey(aiCur) + '/regen', { id: m.bid }, m); }
   else if (act === 'redo') { if (busy) return; m.vers.push(nextReply()); m.cur = m.vers.length - 1; m.tr = false; msg.classList.remove('open'); stream(m); }   // 不多发一句，原位换新回答
   else if (act === 'prev' || act === 'next') { m.cur = (m.cur + (act === 'next' ? 1 : m.vers.length - 1)) % m.vers.length; redraw(m, true); }
@@ -2170,7 +2316,7 @@ function fromApi(x) {
   if (Array.isArray(x.steps) && x.steps.length) m.steps = x.steps.map(stepOf);
   if (Array.isArray(x.notes) && x.notes.length) m.notes = x.notes;
   if (x.cut) m.cut = true;
-  if (x.voice && x.voice.file) { m.voice = fmt(Math.max(1, Math.round(x.voice.dur || 0))); m.vurl = API + '/api/file/' + encodeURIComponent(x.voice.file); }   // 我发的语音：存的是 { file, dur }，点着能回放
+  if (x.voice && x.voice.file) { m.voice = fmt(Math.max(1, Math.round(x.voice.dur || 0))); m.vurl = API + '/api/file/' + encodeURIComponent(x.voice.file); if (x.tone) m.tone = x.tone; }   // 我发的语音：存的是 { file, dur }，点着能回放
   if (x.pat) m.pat = { by: x.role === 'me' ? 'me' : 'ai', name: AI, n: x.pat.n || 1, tail: x.pat.tail || '' };
   if (x.wake) m.knock = x.wake.why === 'idle' ? '空下来了' : '有事';
   const own = (u) => /^\/api\//.test(u) ? API + u : u;      // 后端存的是 /api/file/…，前面补上后端地址
@@ -2396,13 +2542,31 @@ async function apiRaw(path, opt) {
   const er = new Error((j && j.error) || '后端回了 ' + r.status); er.j = j || {}; er.status = r.status; throw er;
 }
 // 认字：请求体就是录音本身（audio/webm、audio/mp4…），回 { text, file, url }。认字服务出错时录音照样存着（502 里也带 file）
-async function sttUp(blob, call) {
+// 量录音（web/ears.js）：跟认字同时进行；量不了（解不开、太短、没加载到）就是 null，照样发。停顿的明细不往后端送
+// 回 { meas, wav }：meas 不对就是 null；「听我的语气」开着、配好了才顺手打包一份 wav
+const moodOn = () => !!(OPTS.mood && fmOk('mood') && liveOn());
+function earsUp(blob) {
+  if (!window.YDEars) return Promise.resolve({ meas: null, wav: null });
+  return YDEars.read(blob, { withWav: moodOn() }).then(r => {
+    const m = r && r.meas, o = m && m.voiced ? Object.assign({}, m) : null; if (o) delete o.pauses;
+    return { meas: o, wav: (r && r.wav) || null };
+  }, () => ({ meas: null, wav: null }));
+}
+// 听语气：wav 交给后端（/api/voice/mood），后端问设置里那家模型，回一两句。最多等 secs 秒，没成就是空的，不耽误发
+function moodUp(wav, text, call, secs) {
+  if (!wav || !moodOn()) return Promise.resolve('');
+  const q = '?text=' + encodeURIComponent(String(text || '').slice(0, 500)) + (call ? '&call=1' : '');
+  const go = apiRaw('/api/voice/mood' + q, { method: 'POST', headers: { 'content-type': 'audio/wav' }, body: wav }).then(r => r.json()).then(j => (j && j.tone) || '', () => '');
+  return Promise.race([go, new Promise(ok => setTimeout(() => ok(''), (secs || 20) * 1000))]);
+}
+async function sttUp(blob, call, ai) {
   const type = (blob.type || 'audio/webm').split(';')[0] || 'audio/webm';
-  return (await apiRaw('/api/voice/stt' + (call ? '?call=1' : ''), { method: 'POST', headers: { 'content-type': type }, body: blob })).json();
+  return (await apiRaw('/api/voice/stt?ai=' + encodeURIComponent(ai || (AIS[aiCur] || {}).id || '') + (call ? '&call=1' : ''), { method: 'POST', headers: { 'content-type': type }, body: blob })).json();
 }
 // 出声：回的是音频字节（一般 audio/mpeg）。call：打电话时用「打电话的声音」那一项（设置里选了单独指定才有区别）
-async function ttsBlob(ai, text, call) {
-  return (await apiRaw('/api/voice/tts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ ai, text: String(text).slice(0, 1000) }, call ? { call: true } : {})) })).blob();
+// keep：念完存进仓库（设置里「存下 TA 的声音」开着时后端才存）。试听不带
+async function ttsBlob(ai, text, call, keep) {
+  return (await apiRaw('/api/voice/tts', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ ai, text: String(text).slice(0, 1000) }, call ? { call: true } : {}, keep ? { keep: true } : {})) })).blob();
 }
 // 放 TA 的声音：只用一个 <audio>。iPhone 要在点按的那一下先出过一次声，后面（等网络回来以后）才让放，所以点「说话」「再听一遍」「试一下」时先放一小段静音
 const sayAud = new Audio(); sayAud.setAttribute('playsinline', '');
@@ -2427,7 +2591,7 @@ function playBlob(b) {                                         // 放一段，�
 }
 
 // —— 打电话：浏览器里一句一轮 ——
-// 录一句（听到说话开始算，停顿 1.2 秒算说完，最长 30 秒）→ 认字（?call=1）→ 发给 TA（第一句带 call: 'start'，后面 call: true）→ TA 的话一边出一边按句念 → 念完再听下一句。
+// 录一句（听到说话开始算，停顿 0.8 秒算说完，最长 30 秒）→ 认字（?call=1）→ 发给 TA（第一句带 call: 'start'，后面 call: true）→ TA 的话一边出一边按句念 → 念完再听下一句。
 // 你说的、TA 说的都照常进聊天记录。挂断：停录音、停念，TA 还没回完的那句照样回完（在聊天里）
 const CALL = { stream: null, ctx: null, an: null, stop: true, n: 0 };
 async function callGo() {
@@ -2440,7 +2604,7 @@ async function callGo() {
   catch (e) { return toast('用不了麦克风：要在浏览器的设置里允许这个网页用麦克风'); }
   let ctx, an; try { ctx = new AC(); an = ctx.createAnalyser(); an.fftSize = 1024; ctx.createMediaStreamSource(stream).connect(an); if (ctx.state === 'suspended') ctx.resume().catch(() => {}); }
   catch (e) { stream.getTracks().forEach(t => t.stop()); return toast('听不了音量，打不了电话'); }
-  Object.assign(CALL, { stream, ctx, an, stop: false, n: 0 });
+  Object.assign(CALL, { stream, ctx, an, stop: false, n: 0, tone: '' });
   callStart(); callLoop(CALLN.i);
 }
 function callDown() {                                          // 挂断时收拾：停录音、关麦克风、停念
@@ -2455,23 +2619,29 @@ function recOne() {                                           // 回 { blob, sec
     const mime = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find(x => MediaRecorder.isTypeSupported(x)) || '';
     let mr; try { mr = new MediaRecorder(CALL.stream, mime ? { mimeType: mime, audioBitsPerSecond: 64000 } : undefined); } catch (e) { callEvent({ err: '录不了音：' + e.message }); return ok(null); }
     const chunks = []; let said = false, quiet = 0, last = Date.now(), tS = 0, tk = null; const t0 = Date.now();
-    mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-    mr.onstop = () => { clearInterval(tk); ok(CALL.stop ? null : !said ? { none: true } : { blob: new Blob(chunks, { type: (mr.mimeType || 'audio/mp4').split(';')[0] }), secs: (Date.now() - tS) / 1000 }); };
+    // 边说边传（11-23）：录音每 0.25 秒出一块，一开口就把攒着的和之后的块一块块传上去（/api/voice/part），说完只差最后一点。
+    // 哪块没传上去就不用这条路了，整段照旧传（chunks 一直都留着）
+    const pid = (Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 24), type = () => (mr.mimeType || 'audio/mp4').split(';')[0];
+    let sent = 0, partOK = true;
+    const pushParts = () => { if (!said || !partOK) return; while (sent < chunks.length) { const k = sent++;
+      apiRaw('/api/voice/part?id=' + pid + '&seq=' + k, { method: 'POST', headers: { 'content-type': type() }, body: chunks[k] }).catch(() => { partOK = false; }); } };
+    mr.ondataavailable = (e) => { if (e.data && e.data.size) { chunks.push(e.data); pushParts(); } };
+    mr.onstop = () => { clearInterval(tk); ok(CALL.stop ? null : !said ? { none: true } : { blob: new Blob(chunks, { type: type() }), secs: (Date.now() - tS) / 1000, pid: partOK && sent === chunks.length ? pid : '', n: sent }); };
     mr.start(250);
     const end = () => { try { mr.stop(); } catch (e) { mr.onstop(); } };
     tk = setInterval(() => {
       if (CALL.stop || !CALL.an) { clearInterval(tk); return end(); }
       const lv = micLv(), now = Date.now(); callEvent({ level: lv });
-      if (lv > .12) { if (!said) { said = true; tS = now; } quiet = 0; } else if (said) quiet += now - last;
+      if (lv > .12) { if (!said) { said = true; tS = now; pushParts(); } quiet = 0; } else if (said) quiet += now - last;
       last = now;
-      if ((said && quiet > 1200) || (said && now - tS > 30000) || (!said && now - t0 > 15000)) { clearInterval(tk); end(); }
+      if ((said && quiet > 800) || (said && now - tS > 30000) || (!said && now - t0 > 15000)) { clearInterval(tk); end(); }
     }, 60);
   });
 }
 function callSpeaker(i0) {                                     // TA 的话一边出一边切句、按顺序念；字幕跟着念到的那句走。*动作* 不念
   const ai = AIS[i0].id; let buf = '', chain = Promise.resolve();
   const clean = (s) => s.replace(/\*[^*\n]*\*/g, ' ').replace(/[#>`~|]/g, ' ').replace(/\s+/g, ' ').trim();
-  const say = (s) => { s = clean(s); if (!s) return; const p = ttsBlob(ai, s, true).catch(e => ({ err: e.message }));
+  const say = (s) => { s = clean(s); if (!s) return; const p = ttsBlob(ai, s, true, true).catch(e => ({ err: e.message }));
     chain = chain.then(async () => { if (!CALLN.on) return; const b = await p; if (!CALLN.on) return;
       callEvent({ state: 'speaking', line: s }); if (b.err) { callEvent({ err: '没念出来：' + b.err }); await wait(800); return; } await playBlob(b); }); };
   return {
@@ -2484,14 +2654,20 @@ async function callLoop(i0) {
     callEvent({ state: 'listening' });
     const r = await recOne(); if (!r || CALL.stop || !CALLN.on) break; if (r.none) continue;
     callEvent({ state: 'hearing' });
-    let st; try { st = await sttUp(r.blob, true); } catch (e) { callEvent({ err: '没认出来：' + e.message }); await wait(1200); continue; }
+    const measP = earsUp(r.blob);
+    let st = null;
+    if (r.pid) st = await apiRaw('/api/voice/stt?call=1&ai=' + encodeURIComponent(AIS[i0].id) + '&part=' + r.pid + '&n=' + r.n, { method: 'POST', headers: { 'content-type': r.blob.type || 'audio/webm' }, body: new Blob([]) }).then(x => x.json(), () => null);   // 块都传上去了：只说一声「说完了」
+    if (!st) try { st = await sttUp(r.blob, true, AIS[i0].id); } catch (e) { callEvent({ err: '没认出来：' + e.message }); await wait(1200); continue; }
     const t = (st.text || '').trim(); if (!t || !CALLN.on) continue;
     callEvent({ heard: t, state: 'thinking' });
     if (aiCur !== i0 || grpCur >= 0 || busy || sendRun) { callEvent({ err: '聊天那边正忙，这句没发' }); continue; }
     const sp = callSpeaker(i0), me = Object.assign(M('me', t), { spoken: 1 });
     data.push(me); log.appendChild(msgEl(me)); down();
     sendRun = true; stopAsk = false; busySet(true);
-    await liveSend(me, t, { call: CALL.n++ ? true : 'start' }, (ev, m) => { m.spoken = 1; if (ev.type === 'delta') sp.push(ev.text || ''); });
+    const ea = await measP, meas = ea.meas;
+    const prev = CALL.tone; CALL.tone = '';                     // 上一句听完的语气，跟这一句一起带过去
+    if (ea.wav) moodUp(ea.wav, t, true, 30).then(x => { if (x && !CALL.stop) CALL.tone = x; });   // 这一句的语气在后台听，下一句带
+    await liveSend(me, t, Object.assign({ call: CALL.n++ ? true : 'start' }, meas ? { meas } : {}, prev ? { tone: prev } : {}), (ev, m) => { m.spoken = 1; if (ev.type === 'delta') sp.push(ev.text || ''); });
     sendRun = false; busySet(false);
     await sp.end();
   }
@@ -2637,9 +2813,75 @@ function vcClick(e) {
   return false;
 }
 
+// —— 仓库：存着的图、语音、通话录音、文件（后端 /api/files，新的在前）——
+// 看的是现在这个 AI 的，加上没记是哪个 AI 的（比如你发的图、文件）。语音、通话里：你说的是你录的那段；
+// TA 说的是 TA 念出来的声音（设置「语音和通话」里「存下 TA 的声音」开着才有）。通话：前后隔 5 分钟以上算另一通
+const REPO = (() => {
+  const TABS = [['img', '图片'], ['voice', '语音'], ['call', '通话'], ['file', '文件']];
+  let tab = 'img', d = null, of = '', loading = false, err = '', lim = 60, openCall = null, aud = null, audKey = '', queue = [];
+  const kb = (n) => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  const p2 = (n) => String(n).padStart(2, '0');
+  const tm = (t) => { const x = new Date(t); return (x.getMonth() + 1) + '-' + x.getDate() + ' ' + p2(x.getHours()) + ':' + p2(x.getMinutes()); };
+  const who = (x) => x.by === 'ai' ? aiN(aiCur) : x.by === 'me' ? '你' : '';
+  async function load(ai) {
+    if (loading) return; loading = true; err = '';
+    try { d = (await api('/api/files?ai=' + encodeURIComponent(ai))).items || []; of = ai; } catch (e) { err = e.message; }
+    loading = false; redraw();
+  }
+  function calls() {                                           // 打电话时的录音按时间分成一通一通
+    const xs = d.filter(x => x.kind === 'audio' && x.call).sort((a, b) => a.t - b.t), out = [];
+    for (const x of xs) { const g = out[out.length - 1]; if (g && x.t - g.end <= 5 * 60e3) { g.clips.push(x); g.end = x.t; } else out.push({ id: x.id, t: x.t, end: x.t, clips: [x] }); }
+    return out.reverse();
+  }
+  function stop() { if (aud) { aud.pause(); aud = null; } audKey = ''; queue = []; }
+  function play(key, urls) {                                  // 同一个再点 = 停；好几段就一段接一段放（整通电话）
+    if (audKey === key) { stop(); return redraw(); }
+    stop(); audKey = key; queue = urls.slice();
+    const next = () => { const u = queue.shift(); if (!u) { audKey = ''; aud = null; return redraw(); }
+      aud = new Audio(u); aud.onended = next; aud.onerror = next; aud.play().catch(() => { toast('放不了'); stop(); redraw(); }); };
+    next(); redraw();
+  }
+  const redraw = () => { if (subCur === '仓库') subOpen('仓库', true); };
+  const vrow = (key, x, sub) => '<button class="row rp-v' + (sub ? ' rp-sub' : '') + (audKey === key ? ' on' : '') + '" data-rplay="' + esc(key) + '"><b class="rp-pl">' + (audKey === key ? '❚❚' : '▶') + '</b><span><span class="rt">'
+    + esc(x.text || '（没有字）') + '</span><small class="rn">' + esc([who(x), tm(x.t), kb(x.size)].filter(Boolean).join(' · ')) + '</small></span></button>';
+  function body() {
+    if (!liveOn()) return '<div class="sb-note">仓库放的是后端存着的图片、语音、通话录音和文件，接上后端以后才看得到。</div>';
+    const ai = AIS[aiCur].id;
+    if (!d || of !== ai) { if (!loading) load(ai); return '<div class="sb-note">' + (err ? esc(err) + '。<button class="lnk" data-rre="1">再试一次</button>' : '翻仓库中…') + '</div>'; }
+    const cs = calls(), pick = { img: d.filter(x => x.kind === 'img'), voice: d.filter(x => x.kind === 'audio' && !x.call), call: cs, file: d.filter(x => x.kind === 'file') };
+    let h = '<div class="rp-tabs">' + TABS.map(([id, n]) => '<button class="rp-t' + (id === tab ? ' on' : '') + '" data-rk="' + id + '">' + n + '<small>' + pick[id].length + '</small></button>').join('') + '</div>';
+    const items = pick[tab];
+    if (!items.length) return h + '<div class="sb-note">' + (tab === 'voice' || tab === 'call' ? '这里还没有。TA 说的话要在设置「语音和通话」里开着「存下 TA 的声音」才会存。' : '这里还没有。') + '</div>';
+    const some = items.slice(0, lim);
+    if (tab === 'img') h += '<div class="rp-grid">' + some.map(x => '<button class="rp-c" data-rimg="' + esc(API + x.url) + '"><img src="' + esc(API + x.url) + '" loading="lazy" alt=""><small>' + esc(tm(x.t)) + '</small></button>').join('') + '</div>';
+    if (tab === 'voice') h += '<div class="rows2">' + some.map(x => vrow(x.id, x)).join('') + '</div>';
+    if (tab === 'call') h += '<div class="rows2">' + some.map(c => { const on = openCall === c.id;
+      return '<button class="row" data-rcall="' + esc(c.id) + '"><span>' + esc(tm(c.t)) + ' 的通话<small class="rn">' + c.clips.length + ' 段</small></span><em>' + (audKey === 'all:' + c.id ? '在放' : '') + '</em><i>' + (on ? '⌄' : '›') + '</i></button>'
+        + (on ? '<button class="row rp-v" data-rcallall="' + esc(c.id) + '"><b class="rp-pl">' + (audKey === 'all:' + c.id ? '❚❚' : '▶') + '</b><span>整通连着放</span></button>' + c.clips.map(x => vrow(x.id, x, true)).join('') : ''); }).join('') + '</div>'
+      + '<div class="sb-note">前后隔 5 分钟以上算另一通。</div>';
+    if (tab === 'file') h += '<div class="rows2">' + some.map(x => '<button class="row" data-ropen="' + esc(x.id) + '"><span>' + esc(x.name) + '<small class="rn">' + esc(tm(x.t)) + ' · ' + kb(x.size) + '</small></span><i>›</i></button>').join('') + '</div>';
+    if (items.length > lim) h += '<button class="btn rp-more" data-rmore="1">再看 ' + Math.min(60, items.length - lim) + ' 个（还有 ' + (items.length - lim) + ' 个）</button>';
+    return h;
+  }
+  function click(e) {
+    const t = e.target.closest('[data-rk],[data-rimg],[data-ropen],[data-rplay],[data-rcall],[data-rcallall],[data-rmore],[data-rre]'); if (!t) return;
+    const ds = t.dataset, byId = (id) => (d || []).find(x => x.id === id);
+    if (ds.rre) { err = ''; d = null; return redraw(); }
+    if (!d) return;
+    if (ds.rk) { tab = ds.rk; lim = 60; openCall = null; return redraw(); }
+    if (ds.rmore) { lim += 60; return redraw(); }
+    if (ds.rimg) return PV.open(ds.rimg);
+    if (ds.ropen) { const x = byId(ds.ropen); if (x) WV.open(API + x.url, x.name); return; }
+    if (ds.rplay) { const x = byId(ds.rplay); if (x) play(x.id, [API + x.url]); return; }
+    if (ds.rcall) { openCall = openCall === ds.rcall ? null : ds.rcall; return redraw(); }
+    if (ds.rcallall) { const c = calls().find(c => c.id === ds.rcallall); if (c) play('all:' + c.id, c.clips.map(x => API + x.url)); }
+  }
+  return { body, click, leave: () => { stop(); }, reset: () => { d = null; err = ''; lim = 60; openCall = null; } };
+})();
 // —— 导航页 ——
 const nav = $('#nav'), sub = $('#sub');
 const NI = {
+  box: '<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
   note: '<path d="M5 4h14v11l-5 5H5z"/><path d="M14 20v-5h5"/>', mem: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
   state: '<circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-20 12 12)"/>', cal: '<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/>',
   todo: '<path d="M5 7l2 2 3-4M5 15l2 2 3-4M14 7h6M14 16h6"/>', music: '<path d="M9 18V6l10-2v12"/><circle cx="6.500" cy="18" r="2.500"/><circle cx="16.500" cy="16" r="2.500"/>',
@@ -2652,8 +2894,9 @@ const NI = {
 };
 const ico = (k) => '<svg viewBox="0 0 24 24">' + NI[k] + '</svg>';
 const WIDE = ['search', '搜索', '找之前说过的话', 'wide', ''];
-const CARDS = [   // 默认的两张（记忆库的小字是现算的）。能移除，但至少留一张
+const CARDS = [   // 默认的三张（记忆库的小字是现算的）。能移除，但至少留一张
   ['mem', '记忆库', '今天记了 3 条', '', 'base'], ['state', '此刻', 'TA 的心绪和念想', '', 'base'],
+  ['box', '仓库', '图片、语音、通话录音、文件', '', 'base'],
 ];
 const OPT = [['music', '一起听', '听同一首歌', '', 'opt'], ['look', '娱乐', '小游戏、画廊', '', 'opt'], ['game', '猜数字', '和 TA 一起玩', '', 'opt']];      // 可选的：默认不放
 // 卡片：自己加的卡片、小游戏默认每个 AI 各一份，可以一键复制一份给别的 AI
@@ -2739,9 +2982,9 @@ function memLiveOn() { return LIVE && AIS[aiCur] && AIS[aiCur].id; }
 const MEM_W = ['text', 'kw', 'why', 'pin', 'from', 'ppl', 'src', 'who', 'st', 'every'];   // 网页上能改的那几项（后端 WEB_EDIT）
 async function memPull(i) {
   const b = '/api/memory/' + encodeURIComponent(AIS[i].id);
-  const [a, g] = await Promise.all([api(b), api(b + '?gone=1')]);
+  const [a, g, cf] = await Promise.all([api(b), api(b + '?gone=1'), api(b + '/cfg').catch(() => null)]);
   const ph = (n, gone) => Array.from({ length: n }, (x, j) => ({ id: 'ph-' + (gone ? 'g' : '') + j, ph: true, kind: 'wish', priv: true, text: '', kw: [], lv: 1, t: 0, by: 'ai', ...(gone ? { gone: 1 } : {}) }));
-  memC[AIS[i].id] = { items: (a.items || []).concat(g.items || [], ph(a.privCount || 0), ph(g.privCount || 0, true)), lock: !!a.lock };
+  memC[AIS[i].id] = { items: (a.items || []).concat(g.items || [], ph(a.privCount || 0), ph(g.privCount || 0, true)), lock: !!a.lock, cfg: cf || {} };
 }
 function memRedraw() { navBuild(); if (subOn && sub.dataset.t === '记忆库') subOpen('记忆库', true); }
 async function memPush(a) {
@@ -2834,6 +3077,14 @@ function memAll() {
     ].forEach((x, i) => { const h = x.h; delete x.h; a.push(Object.assign({ id: 'k' + (15 + i), t: now - h * H, by: 'ai' }, x)); });
     memSave(a);
   }
+  if (a.length && a[0].id === 'm0' && a.some(m => m.id === 'k15') && !a.some(m => m.h)) {   // 第六版假数据：小山（几条记事长成了山，此刻页点远山能看；这里的 h 是山的高度）
+    const now = Date.now(), D = 864e5, H = { m7: [3.5, '打雷那晚'], m4: [2.2, ''], m8: [1.6, ''], m0: [1.1, ''] };
+    a.forEach(m => { const x = H[m.id]; if (!x || m.kind !== 'note') return;
+      m.h = x[0]; m.hAt = Math.min(now, (m.t || now) + 2 * D); if (x[1]) m.hName = x[1];
+      m.hTrail = [{ t: m.hAt, by: 'ai', h: 1, why: m.id === 'm7' ? '那天晚上你说想有人陪，我一直记着。' : '想起来心里还是一动。' }]
+        .concat(x[0] >= 2 ? [{ t: m.hAt + 3 * D, by: 'sig', h: .6, days: 2, links: 1 }, { t: m.hAt + 6 * D, by: 'night', h: x[0], why: '' }] : []); });
+    memSave(a);
+  }
   return a;
 }
 function memLive() { return memAll().filter(m => !m.gone); }   // 归档的在哪儿都当不存在（列表、搜索、关系图、此刻、导出）
@@ -2866,17 +3117,39 @@ function memCardNote() { if (!memCfg().on) return '关着'; const n = memToday()
 // —— 此刻（放情绪、念想、欲望）：不做拟人的数值面板，只把 TA 自己留下的念想按浓度排出来。数据就是记忆库里 kind:'wish' 的那些 ——
 let nwFold = false;
 const ago = (t) => { const h = (Date.now() - t) / 3600e3; return h < 1 ? '刚刚' : h < 24 ? Math.round(h) + ' 小时前' : Math.round(h / 24) + ' 天前'; };
-let nwList = false, pondTop = false;
+let nwList = false, pondTop = false, pondZoom = false;
 // 「外观 → 此刻的水面」：样子（a 厚涂 / b 素净 / c 夜里）、季节（-1 跟着月份，0-3 春夏秋冬），存 fe-pond
 const POND_K = [{ id: 'a', name: '厚涂' }, { id: 'b', name: '素净' }, { id: 'c', name: '夜里' }];
 const POND_S = [{ id: '-1', name: '跟着月份' }, { id: '0', name: '春' }, { id: '1', name: '夏' }, { id: '2', name: '秋' }, { id: '3', name: '冬' }];
 function pondCfg() { let c = {}; try { c = JSON.parse(get('fe-pond') || '{}') || {}; } catch (e) {} if (!['a', 'b', 'c'].includes(c.k)) c.k = 'a'; if (![-1, 0, 1, 2, 3].includes(c.season)) c.season = -1; return c; }
+// 山头上浮出来的那句：TA 起的短名，没有就截正文第一小句
+function hillTitle(m) { if (m.hName) return m.hName; const t = String(m.text || '').split(/[，。；！？,.;!?\n]/)[0].trim(); return [...t].length > 12 ? [...t].slice(0, 12).join('') + '…' : t; }
+// 这座山在说：记下那天的原话、每次 TA 抬高时说的为什么、被想起/连回长高的那几天、后来连回它的事、改正过的，按时间排
+function hillBoard(m, all) {
+  const yr = new Date().getFullYear(), dt = (t) => { const d = new Date(t); return (d.getFullYear() === yr ? '' : d.getFullYear() + ' 年 ') + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日'; };
+  const hist = m.hist || [], first = hist.length ? hist[0].text : m.text, rows = [{ t: m.t || 0, x: first }];
+  hist.forEach((h, i) => { const nx = i + 1 < hist.length ? hist[i + 1].text : m.text; rows.push({ t: (hist[i + 1] && hist[i + 1].t) || m.t2 || m.t, x: '改正了：「' + h.text + '」改成了「' + nx + '」' }); });
+  (m.hTrail || []).forEach(x => {
+    if (x.by === 'ai' || x.by === 'night') rows.push({ t: x.t, x: x.why ? x.why : (x.by === 'night' ? '夜里回头看，它又重了一点。' : '它又重了一点。') });
+    else if (x.by === 'sig') rows.push({ t: x.t, x: '它又长高了一点' + [x.days ? '：在 ' + x.days + ' 个不同的日子被想起过' : '', x.links ? (x.days ? '，' : '：') + x.links + ' 件事连回它' : '', x.tone ? (x.days || x.links ? '，' : '：') + '记下那天你的语气跟平时不一样' : ''].join('') + '。' });
+  });
+  all.filter(x => (x.from || []).includes(m.id) && !x.priv).forEach(x => rows.push({ t: x.t || 0, x: '后来：' + x.text }));
+  rows.sort((a, b) => a.t - b.t);
+  const old = document.querySelector('.hboard'); if (old) old.remove();
+  const b = document.createElement('div'); b.className = 'hboard';
+  b.innerHTML = '<div class="hb-shade"></div><div class="hb-plank"><div class="hb-edge"></div><div class="hb-w"><div class="hb-h">这座山在说：</div>' + rows.map(r => '<div class="hb-d">' + esc(dt(r.t)) + '</div><div class="hb-t">' + esc(r.x) + '</div>').join('') + '<div class="hb-end">（结束了）</div></div></div><button class="hb-ok">看完了</button>';
+  document.body.appendChild(b);
+  requestAnimationFrame(() => requestAnimationFrame(() => b.classList.add('on')));
+  b.querySelector('.hb-ok').onclick = () => { b.classList.add('out'); b.classList.remove('on'); setTimeout(() => b.remove(), 820); };   // 原路落回去，山的画面还是刚才那样
+}
 // 把水面装进「此刻」页：念想（没了结的）一条一条船，私人的只有船没有字，沉下去的在水底
 function nowMount() {
   const host = $('#wishWater'); if (!host) return;
   const list = memLive().filter(m => kOf(m) === 'wish' && !m.done).map(m => ({ id: m.id, text: m.priv ? '' : m.text, lv: Math.max(0, Math.min(3, m.lv | 0)), hits: m.hits, priv: !!m.priv, sunk: wishSunk(m) }));
   const pc = pondCfg();   // 没有念想也照样画水面（空的、水位低）
-  pondMount(host, list, { k: pc.k, season: pc.season, top: pondTop, onView: (t) => { pondTop = t; }, onPick: (m) => {
+  const all = memLive();
+  const hills = all.filter(m => kOf(m) === 'note' && (m.h || 0) >= 1).map(m => ({ id: m.id, text: m.text, h: m.h, hAt: m.hAt, t: m.t, title: hillTitle(m), m }));
+  pondMount(host, list, { k: pc.k, season: pc.season, top: pondTop, onView: (t) => { pondTop = t; }, hills, zoom: pondZoom, onZoom: (z) => { pondZoom = z; }, onHill: (x) => { if (x) hillBoard(x.m, all); }, onPick: (m) => {
     const c = $('#nwCap'); if (!c) return;
     c.innerHTML = m.priv ? '<div class="nw priv">' + esc(AI) + ' 自己的，没打开给你看。</div>'
       : '<button class="nw" data-nw="' + m.id + '">' + esc(m.text) + '<small><span>' + WISH_LV[m.lv] + '</span>' + (m.hits ? '<span>想起过 ' + m.hits + ' 次</span>' : '') + '</small></button>';
@@ -3208,6 +3481,98 @@ if (opt.k) pondEl.dataset.k = opt.k;
 if (opt.season != null && opt.season >= 0) season = opt.season;
 if (opt.top) { setView(true); v = 1; }
 build(list); base = target; frame(performance.now());
+hillsMount();
+
+// ───── 小山：点远山拉近，记事长成的山按螺旋摆（向日葵那种：一圈圈往外，最中间是最早成山的） ─────
+// 地面当成一块平地：gz 0 是最近、1 是最远；越远越小、越淡、越往上。山高照高度，高的山顶长一棵树
+function hillsMount() {
+  const hs = (opt.hills || []).slice().sort((a, b) => (a.hAt || a.t || 0) - (b.hAt || b.t || 0));
+  const hl = el('svg', { id: 'pd-hl', viewBox: '0 0 440 500', preserveAspectRatio: 'xMidYMid slice' }, null);
+  pondEl.insertBefore(hl, pondEl.querySelector('#pd-tex'));
+  // 跟背景远山一个画法（叠在一起，别像钟乳石）：每座山是一道宽山脊，底下一直填到画面底，
+  // 近的挡住远的山脚，一层层叠起来；远的淡、近的浓，每层山脚一抹雾；朝太阳那面亮（glitL/R）
+  const lit = SUN[season][0] > 220 ? 'url(#glitR)' : 'url(#glitL)';
+  el('rect', { x: -20, y: 262, width: 480, height: 260, fill: 'var(--hill0)', class: 'pd-sh' }, hl);
+  el('ellipse', { cx: 220, cy: 266, rx: 300, ry: 12, fill: 'var(--sky2)', opacity: .55, class: 'pd-soft' }, hl);
+  const spots = hs.map((m, i) => {
+    const r = i ? .34 * Math.sqrt(i) : 0, a = i * 2.39996 + .6;    // 黄金角：一圈圈螺旋往外，最中间是最早的
+    const gz = Math.max(0, Math.min(1, .55 + r * Math.sin(a) * .75)), gx = Math.max(-1, Math.min(1, r * Math.cos(a)));
+    return { m, i, gz, gx };
+  }).sort((p, q) => q.gz - p.gz);                                   // 远的先画
+  const sel = { g: null }, f = (n) => n.toFixed(1), labs = [];
+  // 近 → 远。冬天背景那三层几乎一样白（冬天的山会不明显），山这层单独用由深到浅的灰蓝
+  const COL = season === 3 ? ['#b2c3ce', '#cbd7de', '#e3eaef'] : ['var(--hill2)', 'var(--hill1)', 'var(--hill0)'];
+  spots.forEach((p) => {
+    const sc = 1 - .35 * p.gz, x = 220 + p.gx * 150, yb = 462 - p.gz * 172;       // yb：这道山脊的山脚在画里多高
+    const Hh = (34 + 22 * Math.min(5, Math.max(1, p.m.h || 1) - 1)) * sc * 1.15, Ww = Hh * 4.2 + 60 * sc;
+    const out = el('g', { class: 'pd-hill', transform: `translate(${f(x)},${f(yb)})` }, hl);
+    const g = el('g', {}, out); g.style.transitionDelay = (.45 + p.i * .12).toFixed(2) + 's';
+    const fill = COL[Math.min(2, Math.floor(p.gz * 3))];
+    // 山脊：两边拖得长长的缓坡，峰偏一点；底下填到画面底（yb 往下 600）
+    const L = -Ww / 2, R = Ww / 2, pk = Ww * (.06 * Math.sin(p.i * 1.7));
+    // 两边的缓坡一直拖到画面左右边（整条横贯，跟背景远山一样），山脚线高低起伏一点
+    const EL = -30 - x, ER = 470 - x, w1 = 5 * Math.sin(p.i * 2.3), w2 = 5 * Math.cos(p.i * 1.9);
+    const d = `M${f(EL)},600 L${f(EL)},${f(w1)} Q${f((EL + L) / 2)},${f(w1 * 1.6 + 2)} ${f(L)},0 C${f(L + Ww * .2)},${f(-Hh * .1)} ${f(pk - Ww * .16)},${f(-Hh)} ${f(pk)},${f(-Hh)} C${f(pk + Ww * .14)},${f(-Hh)} ${f(R - Ww * .22)},${f(-Hh * .14)} ${f(R)},0 Q${f((R + ER) / 2)},${f(w2 * 1.6 + 2)} ${f(ER)},${f(w2)} L${f(ER)},600Z`;
+    el('path', { d, fill, class: 'pd-sh' }, g);   // 不加毛边滤镜：大片铺到底的形状加滤镜，手机上画得很慢
+    el('path', { d, fill: lit, class: 'pd-ov' }, g);
+    el('path', { d, fill: 'url(#gmist)', class: 'pd-ov' }, g);
+    el('ellipse', { cx: 0, cy: 6, rx: 300, ry: 9 * sc, fill: 'var(--sky2)', opacity: season === 3 ? .55 : .3, class: 'pd-soft' }, g);    // 山脚的雾（冬天浓一点，把前后层隔开）
+    // 山脊上沿一条淡淡的阴影线，层和层分得开
+    const ridge = d.replace(/^M[^L]+L/, 'M').replace(/ L[^L]*Z$/, '');
+    el('path', { d: ridge, fill: 'none', stroke: 'var(--deep)', 'stroke-width': 1.3, opacity: season === 3 ? .32 : .14, 'stroke-linecap': 'round' }, g);
+    if ((p.m.h || 0) >= 2) { const sd = p.i % 2 ? 1 : -1; tree(g, pk + sd * Ww * .17, -Hh * .58, 1.05 * sc, p.i); }   // 高的山坡上长一棵树（长在边上）
+    labs.push({ x: x + pk, y: yb - Hh - 9, t: p.m.title || '' });                                                    // 点背景才浮出来的短标题（最后统一画在最上面，免得被近的山挡住）
+    out.addEventListener('click', (e) => { e.stopPropagation(); if (sel.g) sel.g.classList.remove('on'); sel.g = out; out.classList.add('on'); if (opt.onHill) opt.onHill(p.m); });
+  });
+  const lg = el('g', { 'pointer-events': 'none' }, hl);
+  labs.forEach(l => { const t = el('text', { x: f(Math.max(40, Math.min(400, l.x))), y: f(Math.max(24, l.y)), class: 'pd-hlab' }, lg); t.textContent = l.t; });
+  if (!hs.length) {
+    const t = el('text', { x: 220, y: 400, class: 'pd-hn' }, hl); t.textContent = '岛上还没有山';
+    const t2 = el('text', { x: 220, y: 422, class: 'pd-hn', style: 'font-size:11.5px;opacity:.55' }, hl); t2.textContent = '要紧的事被想起、被连回，或者 TA 说它更重了，才慢慢长成山';
+  }
+  hl.addEventListener('click', () => { pondEl.classList.toggle('labs'); if (sel.g) { sel.g.classList.remove('on'); sel.g = null; } });
+  // 云遮的转场：两边的云漫过来把画面遮满 → 底下悄悄换成拉近的样子 → 云往两边散开，山从地里冒出来。回到水面也一样
+  // 云是六块 HTML 层（每边上中下三截），各自画一次、整块用 transform 平移，交给显卡动——
+  // 以前画在 SVG 里，每一帧都要连底下带手绘滤镜的山一起重画，手机上散开那段会跳帧，看着像一下子没了
+  const cv = document.createElement('div'); cv.className = 'pd-cvw';
+  pondEl.insertBefore(cv, pondEl.querySelector('#pd-tex'));
+  const strip = (side, st) => {
+    const d = document.createElement('div'); d.className = 'pd-cs ' + (side < 0 ? 'cl' : 'cr') + ' s' + (st + 1); cv.appendChild(d);
+    const g = el('svg', { viewBox: '0 0 440 500', preserveAspectRatio: 'xMidYMid slice' }, d);
+    const x0 = side < 0 ? -40 : 480, xe = side < 0 ? 236 : 204, y0 = -40 + st * 193, y1 = y0 + 193;
+    el('rect', { x: Math.min(x0, xe - 30 * side) - 60, y: y0 - 6, width: Math.abs(x0 - xe) + 90, height: y1 - y0 + 12, fill: 'var(--sun)' }, g);
+    for (let k = 0; k < 9; k++) {
+      const y = -20 + k * 66; if (y < y0 - 20 || y >= y1 - 20) continue;
+      const r = 46 + (k * 37 % 3) * 12, x = xe + side * ((k * 53) % 3) * 10;
+      el('circle', { cx: x, cy: y, r, fill: 'var(--sky2)', opacity: .5, class: 'pd-sh' }, g);
+      el('circle', { cx: x - side * 6, cy: y - 4, r: r * .96, fill: 'var(--sun)', class: 'pd-sh' }, g);
+    }
+    for (let k = 0; k < 6; k++) { const cy = 20 + k * 92; if (cy >= y0 && cy < y1) el('ellipse', { cx: xe - side * (60 + (k * 41) % 90), cy, rx: 70, ry: 26, fill: 'var(--sky1)', opacity: .35, class: 'pd-soft', filter: 'url(#fsoft)' }, g); }
+  };
+  for (const side of [-1, 1]) for (let st = 0; st < 3; st++) strip(side, st);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let busyZ = false;
+  function swap(fn) {
+    if (still) { fn(); return; }
+    if (busyZ) return; busyZ = true;
+    pondEl.classList.add('cloud');
+    setTimeout(() => { pondEl.classList.add('snap'); fn(); void pondEl.offsetWidth;
+      // 换成拉近的画面那一帧很重（远山放大、山脊带毛边滤镜），手机要画一阵。等它真画出来（连着两次 requestAnimationFrame）
+      // 再让云散开——以前是同时开始，画完时散开早就「走完」了，看到的是云直接没了
+      requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => {
+        pondEl.classList.remove('snap', 'cloud'); setTimeout(() => { busyZ = false; }, 1150);
+      }, 80)));
+    }, 640);   // 云合上（0.6 秒）才换
+  }
+  // 点远山拉近：水那层里在远山的位置放一块透明的（只在平着看时管用）
+  const zone = el('rect', { x: 0, y: 118, width: 440, height: 150, fill: 'transparent', class: 'pd-hz' }, stage);
+  stage.insertBefore(zone, stage.firstChild);
+  zone.addEventListener('click', (e) => { if (vT) return; e.stopPropagation(); swap(() => pondEl.classList.add('zoom')); if (opt.onZoom) opt.onZoom(true); });
+  const back = document.createElement('button'); back.className = 'pd-back'; back.textContent = '回到水面';
+  back.onclick = () => { swap(() => pondEl.classList.remove('zoom', 'labs')); if (sel.g) { sel.g.classList.remove('on'); sel.g = null; } if (opt.onZoom) opt.onZoom(false); };
+  pondEl.appendChild(back);
+  if (opt.zoom) pondEl.classList.add('zoom');
+}
 }
 /*POND-JS-END*/
 /*PET-JS*/
@@ -3855,6 +4220,8 @@ function memBody() {
       + [['newWishPerDay', '一天最多新记几条', '落叶不算在里面', '条'], ['upPerDay', '一条一天最多升几档', '', '档'], ['holdDays', '升到执念，要在几天里想起过', '不同的日子', '天'], ['leafDays', '落叶多久没人碰就沉下去', '沉下去不是归档，被说起还会浮上来', '天']]
         .map(([k, n, note, u]) => '<div class="row tall"><span>' + n + (note ? '<small class="rn">' + note + '</small>' : '') + '</span><div class="stp"><button data-wg="' + k + ':-1"' + (g[k] <= WISH_GR[k][0] ? ' disabled' : '') + '>−</button><b>' + g[k] + ' ' + u + '</b><button data-wg="' + k + ':1"' + (g[k] >= WISH_GR[k][1] ? ' disabled' : '') + '>＋</button></div></div>').join('')
       + '</div><div class="sb-note">这几个数你和 ' + esc(AI) + ' 商量着定。它们只拦着别涨太快，变浓变淡还是 TA 自己说。</div>'; })()
+    + (memLiveOn() ? (() => { const on = !!((memC[AIS[aiCur].id] || {}).cfg || {}).hill; return '<div class="nv-sec">小山</div><div class="rows2"><button class="row" data-mhill><span>让要紧的事长成岛上的小山</span><em>' + (on ? '开' : '关') + '</em></button></div>'
+      + '<div class="sb-note">开着：记事会慢慢长高。' + esc(AI) + ' 觉得哪件事在心里更重了可以自己抬（聊天时、散场记、夜里整理都行）；被不同的日子想起、后来的事连回它、记下那轮你语音的语气跟平时不一样，也会让它长高。高到一定程度就是一座山：不会沉，你和 TA 都不能归档，记错了只能改正文字（改之前的字留着）。最高的几座每次开场都带给 TA。</div>'; })() : '')
     + '<div class="nv-sec">向量召回</div><div class="rows2"><button class="row" data-ms="vec"><span>聊天时按意思想起相关的记忆' + (c.vec && !(c.url && c.model && (c.key || c.prov === 'ollama')) ? '<small class="rn">还没配 · 在下面选一家</small>' : '') + '</span><em>' + (c.vec ? '开' : '关') + '</em></button></div>'
     + (c.vec ? '<div class="rows2" style="margin-top:10px">' + Object.keys(VPROV).map(k => '<button class="row" data-vp="' + k + '"><span>' + VPROV[k][0] + '</span><em>' + (c.prov === k ? '✓' : '') + '</em></button>').join('') + '</div>'
       + '<div class="fld"><input id="vUrl" placeholder="接口地址" value="' + esc(c.url) + '"></div><div class="fld"><input id="vModel" placeholder="模型名" value="' + esc(c.model) + '"></div>'
@@ -3897,6 +4264,11 @@ function memClick(e) {
     const kw = $('#mmKw').value.split(/[,，、\s]+/).map(s => s.trim()).filter(Boolean);
     const a = memAll(); a.push(Object.assign({ id: 'm' + Date.now().toString(36), t: Date.now(), by: 'me', kind: memWK, text: v, kw }, memWK === 'pact' ? { who: memWW, st: 'on' } : memWK === 'habit' ? { every: ($('#mmEvery') ? $('#mmEvery').value.trim() : '') || '常常', st: 'on' } : {})); memSave(a);
     $('#mmNew').value = ''; $('#mmKw').value = ''; memDraw(); navBuild(); return toast('记下了');
+  }
+  if (e.target.closest('[data-mhill]')) {                    // 小山：存在后端（按 AI 分开），不在这台设备上
+    const id = AIS[aiCur].id, c = memC[id] || (memC[id] = { items: [], cfg: {} }), on = !(c.cfg || {}).hill;
+    api('/api/memory/' + encodeURIComponent(id) + '/cfg', { method: 'PUT', body: { hill: on } }).then(r => { c.cfg = r || {}; const y = sub.scrollTop; subOpen('记忆库', true); sub.scrollTop = y; }).catch(er => toast('没存上：' + er.message));
+    return;
   }
   const ms = e.target.closest('[data-ms]'); if (ms) { const c = memCfg(); c[ms.dataset.ms] = !c[ms.dataset.ms]; memCfgSave(c); navBuild(); return subOpen('记忆库', true); }
   const vp = e.target.closest('[data-vp]'); if (vp) { const c = memCfg(), p = VPROV[vp.dataset.vp]; if (c.prov !== vp.dataset.vp) c.key = '';   // 换了一家，上一家的 Key 用不了
@@ -4338,7 +4710,7 @@ let navOn = false, subOn = false, subCur = '';   // subCur：现在开着的是�
 const navSet = (on) => { navOn = on; slide(nav, on ? '0' : '-100%', true); };
 const subSet = (on) => { if (!on) { memUnlocked = false; memAsk = memPend = null; } subOn = on; document.body.classList.toggle('subon', on); slide(sub, on ? '0' : '100%', true); };
 // —— 设置里的开关：都存在 fe-opts，一个 AI 一份的以后再说 ——
-const OPT0 = { time: true, aiVoice: true, autoStt: true, mood: true, callSub: true, denoise: 'auto', push: false, knock: true, quiet: true, sound: true };
+const OPT0 = { keepVoice: true, time: true, aiVoice: true, autoStt: true, mood: true, callSub: true, denoise: 'auto', push: false, knock: true, quiet: true, sound: true };
 let OPTS = Object.assign({}, OPT0); try { Object.assign(OPTS, JSON.parse(get('fe-opts') || '{}')); } catch (e) {}
 const optSave = () => { set('fe-opts', JSON.stringify(OPTS)); svcOptsSync(); };
 const tg = (k, n, note) => '<button class="row" data-op="' + k + '"><span>' + n + (note ? '<small class="rn">' + note + '</small>' : '') + '</span><em>' + (OPTS[k] ? '开' : '关') + '</em></button>';
@@ -4518,7 +4890,7 @@ const FM = [
   ['img', '生图', 'TA 想画画时用', [['NovelAI（原生）', 'https://image.novelai.net', 'nai-diffusion-4-5-full'], ['OpenAI 兼容图片接口', 'https://api.openai.com/v1', 'gpt-image-1'], ['硅基流动', 'https://api.siliconflow.cn/v1', 'Kwai-Kolors/Kolors']]],
   ['trans', '翻译', 'TA 的话不是中文时，长按「翻译」', [['硅基流动', 'https://api.siliconflow.cn/v1', 'Qwen/Qwen3-8B'], ['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-flash'], ['DeepSeek', 'https://api.deepseek.com/v1', 'deepseek-chat']]],
   ['stt', '语音转文字', '你发的语音条转成字', [['硅基流动', 'https://api.siliconflow.cn/v1', 'FunAudioLLM/SenseVoiceSmall', ['FunAudioLLM/SenseVoiceSmall', 'Qwen/Qwen3-ASR-1.7B']], ['OpenAI', 'https://api.openai.com/v1', 'whisper-1'], ['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen3-asr-flash']]],
-  ['mood', '听语气', '听出你语音里的情绪和语速', [['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-omni-turbo'], ['Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3-flash']]],
+  ['mood', '听语气', '听出你语音里的情绪和语速', [['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen3.8-omni-flash', ['qwen3.8-omni-flash', 'qwen3.5-omni-flash']], ['Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3-flash']]],
   ['tts', 'TA 的声音', '语音条和打电话时 TA 说话', [['ElevenLabs', 'https://api.elevenlabs.io/v1', 'eleven_v4', EL_M], ['MiniMax', 'https://api.minimaxi.com/v1', 'speech-2.6-hd'], ['硅基流动', 'https://api.siliconflow.cn/v1', 'FunAudioLLM/CosyVoice2-0.5B'], ['Cartesia', 'https://api.cartesia.ai', 'sonic-3.6', CA_M]]],
   ['memo', '记忆小模型', '夜里整理记忆前先帮 TA 过一遍材料', [['硅基流动', 'https://api.siliconflow.cn/v1', 'Qwen/Qwen3-8B'], ['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-flash'], ['本机 Ollama', 'http://127.0.0.1:11434/v1', 'qwen3.5:9b']]],
 ];
@@ -4542,7 +4914,8 @@ function svcLive() { return LIVE && !!svcC; }
 const KEY_PH = '•'.repeat(12);
 const keyPh = (o) => o && o.hasKey ? KEY_PH + (o.keyTail || '••••') : '';
 const isPh = (k) => typeof k === 'string' && k.startsWith(KEY_PH);
-async function svcPull() { try { svcC = await api('/api/svc'); if (svcC.asrWords != null) set('fe-asrwords', svcC.asrWords || null); } catch (e) { svcC = null; toast('取服务设置：' + e.message); } }
+async function svcPull() { try { svcC = await api('/api/svc'); if (svcC.asrWords != null) set('fe-asrwords', svcC.asrWords || null);
+  if (typeof svcC.keepVoice === 'boolean' && OPTS.keepVoice !== svcC.keepVoice) { OPTS.keepVoice = svcC.keepVoice; set('fe-opts', JSON.stringify(OPTS)); }   /* 存不存 TA 的声音以后端为准（换了设备也一样） */ } catch (e) { svcC = null; toast('取服务设置：' + e.message); } }
 function svcFmAll() { const a = {}; Object.entries(svcC.fm || {}).forEach(([k, o]) => { const { hasKey, keyTail, ...r } = o; a[k] = Object.assign(r, hasKey ? { key: keyPh(o) } : {}); }); return a; }
 function svcFmPut(k, c) {
   const old = (svcC.fm || {})[k] || {}, body = {};
@@ -4554,8 +4927,8 @@ function svcFmPut(k, c) {
 }
 function svcOptsSync() {                                      // 推送走、打电话单独指定、常被认错的词：跟后端那份不一样才送
   if (!svcLive()) return;
-  const cs = OPTS.callSvc || 'same', aw = get('fe-asrwords') || '', rt = OPTS.pushRoute || 'web';
-  if (cs !== svcC.callSvc || aw !== (svcC.asrWords || '')) { svcC.callSvc = cs; svcC.asrWords = aw; svcPut('/api/svc/opts', { callSvc: cs, asrWords: aw }).catch(e => toast('没存上：' + e.message)); }
+  const cs = OPTS.callSvc || 'same', aw = get('fe-asrwords') || '', rt = OPTS.pushRoute || 'web', kv = OPTS.keepVoice !== false;
+  if (cs !== svcC.callSvc || aw !== (svcC.asrWords || '') || kv !== (svcC.keepVoice !== false)) { svcC.callSvc = cs; svcC.asrWords = aw; svcC.keepVoice = kv; svcPut('/api/svc/opts', { callSvc: cs, asrWords: aw, keepVoice: kv }).catch(e => toast('没存上：' + e.message)); }
   if (rt !== (svcC.push || {}).route) { svcC.push = Object.assign({}, svcC.push, { route: rt }); svcPut('/api/svc/push', { route: rt }).catch(e => toast('没存上：' + e.message)); }
 }
 function fmGet(k) { const c = fmAll()[k] || {}; return k === 'img' ? Object.assign({}, IMG0, c) : c; }
@@ -4677,7 +5050,8 @@ function voiceBody() {
     + tg('autoStt', '语音条自动转成文字', '不开的话，长按语音条再转' + (fmOk('stt') ? '' : ' · 还没配'))
     + fmItem('stt', '用哪家')
     + tg('mood', '听我的语气', '听语音的模型听出情绪、语速，长按我的语音条看' + (OPTS.mood && !fmOk('mood') ? ' · 还没配' : ''))
-    + (OPTS.mood ? fmItem('mood', '用哪家') : '') + '</div>'
+    + (OPTS.mood ? fmItem('mood', '用哪家') : '')
+    + tg('keepVoice', '存下 TA 的声音', '念过的话、电话里说的，放进「仓库」（同一句只存一份）') + '</div>'
     + '<div class="sb-note">你发的语音条要先转成字 TA 才听得懂，所以「自动转」关着也要配认字。这几家跟「功能模型」里是同一份，哪边改都行。</div>'
     + vcBody()
     + '<div class="nv-sec">打电话</div><div class="rows2">' + tg('callSub', '通话时显示字幕')
@@ -4780,7 +5154,9 @@ function subOpen(title, keep) {
   let body = '<div class="sb-note">「' + title + '」还没做，这里先占个位置。</div>';
   if (title !== '记忆库' || !keep) { memUnlocked = false; memAsk = memPend = null; }   // 离开记忆库（或重新进来）就锁上
   if (!keep) { fmOpen = null; fmProv = false; fmVo = null; barkOpen = false; vcDraft = null; lwDraft = null; }   // 功能模型的表单「语音和通话」也用，所以只在新进一页时收起
-  if (title === '此刻') { if (!keep) { nwFold = false; nwList = false; pondTop = false; } body = nowBody(); }
+  if (title === '此刻') { if (!keep) { nwFold = false; nwList = false; pondTop = false; pondZoom = false; } body = nowBody(); }
+  if (title !== '仓库') REPO.leave();
+  if (title === '仓库') { if (!keep) REPO.reset(); body = REPO.body(); }
   if (title === '记忆库') { if (!keep) { memFold = null; memPg = 'home'; memQ = ''; memF = 'all'; memK = 'all'; memLv = 'all'; memP = 0; memOpen = memEdit = memDel = memHi = dyOpen = null; } body = memBody(); }
   if (title !== '人格' || !keep) { psEdit = false; psHist = null; psOK = false; }   // 离开人格页就锁上（跟记忆库一样）
   if (title === '人格') body = psBody();
@@ -4853,6 +5229,7 @@ nav.addEventListener('click', (e) => {
   subOpen(t);
 });
 
+sub.addEventListener('click', (e) => { if (subCur === '仓库') REPO.click(e); });
 sub.addEventListener('click', (e) => {
   if (e.target.closest('#subx')) { if (sub.dataset.t === '开屏字幕' || sub.dataset.t === '字体和水印') return subOpen('外观'); if (sub.dataset.t === '记忆库' && memPg !== 'home') return memGo('home'); if (sub.dataset.t === '主动找我' && wkPg !== 'home') return wkGo('home'); return subSet(false); }
   const dt = e.target.closest('#subDots'); if (dt) return dotsOpen(dt);

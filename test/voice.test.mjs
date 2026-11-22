@@ -323,3 +323,106 @@ test('出站地址：默认只许 https 公网；本机、私网、http 要 ALLO
     assert.ok(!g.up.seen.some((x) => x.url === '/elsewhere'));
   } finally { await g.close(); }
 });
+
+test('听语气：没配 503、不是 wav 415、太大 413；流式拼起来取 tone；也认非流式 JSON；百炼写 data: 地址、别家纯 base64；Key 只在头里', async () => {
+  const g = await setup();
+  const WAV = Buffer.concat([Buffer.from('RIFF'), Buffer.alloc(200, 3)]);
+  const mood = (buf, type = 'audio/wav', q = '?text=' + encodeURIComponent('我今天面试过了')) => g.call('POST', '/api/voice/mood' + q, buf, { 'content-type': type });
+  try {
+    assert.equal((await mood(WAV)).status, 503);
+    g.svc.putFm('mood', { url: g.base + '/gm/v1', model: 'gemini-x', key: KEY });
+    assert.equal((await mood(WAV, 'audio/webm')).status, 415);
+    // 流式：几段拼起来是一个 JSON
+    g.up.reply = (r, res) => {
+      res.writeHead(200, { 'content-type': 'text/event-stream' });
+      for (const t of ['{"tone": "声音', '有点抖，', '像是激动，说完笑了一下"}']) res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: t } }] })}\n\n`);
+      res.end('data: [DONE]\n\n');
+    };
+    let r = await mood(WAV);
+    assert.equal(r.status, 200);
+    assert.equal(r.json.tone, '声音有点抖，像是激动，说完笑了一下');
+    let s = g.up.seen.at(-1);
+    assert.equal(s.url, '/gm/v1/chat/completions');
+    assert.equal(s.headers.authorization, 'Bearer ' + KEY);
+    assert.equal(s.json.stream, true);
+    const parts = s.json.messages[0].content;
+    assert.deepEqual(parts[0], { type: 'input_audio', input_audio: { data: WAV.toString('base64'), format: 'wav' } });
+    assert.match(parts[1].text, /我今天面试过了/);
+    assert.doesNotMatch(parts[1].text, /打电话/);
+    // 百炼：data: 地址；电话那句的问法；非流式 JSON、带代码块也认；超长截到 300
+    g.svc.putFm('mood', { url: g.base + '/dashscope/v1', model: 'qwen3.8-omni-flash', key: KEY });
+    g.up.reply = (rq, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: '```json\n{"tone":"' + '很'.repeat(400) + '"}\n```' } }] })); };
+    r = await mood(WAV, 'audio/wav', '?text=x&call=1');
+    assert.equal([...r.json.tone].length, 300);
+    s = g.up.seen.at(-1);
+    assert.equal(s.json.messages[0].content[0].input_audio.data, 'data:audio/wav;base64,' + WAV.toString('base64'));
+    assert.match(s.json.messages[0].content[1].text, /打电话/);
+    // 不是 JSON：用原话；什么都没回：502
+    g.up.reply = (rq, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: '她听起来很累' } }] })); };
+    assert.equal((await mood(WAV)).json.tone, '她听起来很累');
+    g.up.reply = (rq, res) => { res.writeHead(200, { 'content-type': 'text/event-stream' }); res.end('data: [DONE]\n\n'); };
+    assert.equal((await mood(WAV)).status, 502);
+    // 上游报错带着 Key 也抹掉
+    g.up.reply = (rq, res) => { res.writeHead(401, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: { message: 'bad key ' + KEY } })); };
+    r = await mood(WAV);
+    assert.equal(r.status, 502);
+    assert.doesNotMatch(r.json.error, new RegExp(KEY));
+    assert.equal((await mood(Buffer.alloc(5 * 1024 * 1024 + 10, 1))).status, 413);
+    g.noLeak();
+  } finally { await g.close(); }
+});
+
+test('打电话边说边传：一块块传上来（可以乱序、最后一块晚到），说完那句拼起来认；缺块 409；编号不对 400', async () => {
+  const g = await setup();
+  try {
+    g.svc.putFm('stt', { url: g.base + '/sf/v1', model: 'm', key: KEY });
+    const part = (id, seq, buf) => g.call('POST', `/api/voice/part?id=${id}&seq=${seq}`, buf, { 'content-type': 'audio/webm' });
+    const a = WEBM.subarray(0, 10), b = WEBM.subarray(10, 20), c = WEBM.subarray(20);
+    assert.equal((await part('abcd1234', 1, b)).status, 200);
+    assert.equal((await part('abcd1234', 0, a)).status, 200);
+    setTimeout(() => part('abcd1234', 2, c), 300);                       // 最后一块比「说完了」晚到
+    const t0 = Date.now();
+    let r = await g.stt(Buffer.alloc(0), 'audio/webm', '?call=1&part=abcd1234&n=3');
+    assert.equal(r.status, 200);
+    assert.equal(r.json.text, '转出来的字');
+    assert.ok(Date.now() - t0 < 2000);
+    assert.ok(g.up.seen.at(-1).raw.includes(WEBM));                      // 交给认字服务的是三块按顺序拼起来的
+    assert.equal((await g.call('GET', '/api/file/' + r.json.file)).buf.equals(WEBM), true);
+    // 缺一块：等 2.5 秒判缺，409（网页改传整段）
+    await part('lost12345', 0, a);
+    r = await g.stt(b, 'audio/webm', '?call=1&part=lost12345&n=2');
+    assert.equal(r.status, 409);
+    // 编号不对
+    assert.equal((await part('BAD!', 0, a)).status, 400);
+    assert.equal((await part('abcd1234', 'x', a)).status, 400);
+    assert.equal((await g.call('POST', '/api/voice/part?id=abcd1234&seq=0', a, { 'content-type': 'text/plain' })).status, 415);
+    g.noLeak();
+  } finally { await g.close(); }
+});
+
+test('仓库：录音记下是你的、哪个 AI、是不是电话里的、说的字；TA 念的（keep）存一份、同一句不重复、试听不存、关了不存；按种类和 AI 列', async () => {
+  const g = await setup();
+  try {
+    g.svc.putFm('stt', { url: g.base + '/sf/v1', model: 'm', key: KEY });
+    g.svc.putFm('tts', { url: g.base + '/sf/v1', model: 'cosy', key: KEY, voices: { o: { id: 'v-o' }, p: { id: 'v-p' } } });
+    let r = await g.stt(WEBM, 'audio/webm', '?call=1&ai=o');
+    assert.equal(r.status, 200);
+    await g.stt(WEBM, 'audio/webm', '?ai=p');
+    await g.tts({ ai: 'o', text: '你好呀', keep: true });
+    await g.tts({ ai: 'o', text: '你好呀', keep: true });                 // 同一句再念一次：不多存
+    await g.tts({ ai: 'o', text: '试听的一句' });                          // 没带 keep（试听）：不存
+    await g.tts({ ai: 'o', text: '电话里说的', keep: true, call: true });
+    let L = (await g.call('GET', '/api/files?kind=audio&ai=o')).json.items;
+    assert.deepEqual(L.map((x) => [x.by, !!x.call, x.text]).sort(), [['ai', false, '你好呀'], ['ai', true, '电话里说的'], ['me', true, '转出来的字']].sort());
+    assert.ok(L.every((x) => x.ai === 'o' && !('key' in x) && x.url.startsWith('/api/file/')));
+    assert.equal((await g.call('GET', '/api/files?kind=audio&ai=p')).json.items.length, 1);
+    assert.equal((await g.call('GET', '/api/files?kind=img')).json.items.length, 0);
+    // 设置里关掉「存下 TA 的声音」：不存
+    g.svc.putOpts({ keepVoice: false });
+    await g.tts({ ai: 'o', text: '关了以后说的', keep: true });
+    L = (await g.call('GET', '/api/files?kind=audio&ai=o')).json.items;
+    assert.ok(!L.some((x) => x.text === '关了以后说的'));
+    assert.equal(g.svc.view(g.svc.read()).keepVoice, false);
+    g.noLeak();
+  } finally { await g.close(); }
+});

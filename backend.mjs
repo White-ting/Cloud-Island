@@ -14,6 +14,7 @@ import { openDreams } from './lib/dreams.mjs';
 import { makeNight, makeRunner, makeApiRunner } from './lib/night.mjs';
 import { makeMemModel } from './lib/memmodel.mjs';
 import { openChat } from './lib/chat.mjs';
+import { openEars } from './lib/ears.mjs';
 import { openInbox } from './lib/inbox.mjs';
 import { openKnock, makeHandlers } from './lib/knock.mjs';
 import { makeMcp } from './lib/mcp.mjs';
@@ -29,7 +30,7 @@ import { openPush } from './lib/push.mjs';
 import { makeHelper, makeSlotGuard } from './lib/helper.mjs';
 import { makeNet } from './lib/net.mjs';
 
-export const VERSION = '1.0.0';
+export const VERSION = '1.3.0';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 export function loadConfig(baseDir = here, env = process.env) {
@@ -122,7 +123,7 @@ async function main() {
   const nameOf = (ai) => { try { return chat.ais().find((a) => a.id === ai)?.name || ai; } catch { return ai; } };
   const push = openPush({ dir: cfg.dataDir, svc, env: cfg.push, nameOf, log, net });
   const pushOf = (kind) => (ai, m, o = {}) => (kind === 'wake' && o.push === false ? null : push.notify(ai, { kind, text: m.text }));
-  chat = openChat({ dir: cfg.dataDir, store, hooks, persona, pat, files, upstream: cfg.upstream, keyOf: cfg.keyOf, log, tz: cfg.tz, onWake: pushOf('wake'), onReply: pushOf('reply') });
+  chat = openChat({ dir: cfg.dataDir, store, hooks, persona, pat, files, ears: openEars({ dir: cfg.dataDir }), upstream: cfg.upstream, keyOf: cfg.keyOf, log, tz: cfg.tz, onWake: pushOf('wake'), onReply: pushOf('reply') });
   // 重启前还没问的散场记：按剩下的时间重新挂上（定时器只在内存里，重启就丢了）
   try { const n = chat.boot(); if (n) log('散场记', `重启后重新挂上 ${n} 个`); } catch (e) { log('散场记重新挂定时器出错', e.message); }
   // 收件箱：会叫醒 TA 的事（敲门、空下来、夜里、回头看）先进这张表，一个 AI 一次做一件；TA 正在回她的话时不取

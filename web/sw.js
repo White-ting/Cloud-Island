@@ -64,6 +64,10 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || req.mode !== 'navigate') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin || url.pathname.includes('/api/')) return;
+  // 只存云岛主页面本身（scope 或 scope + index.html）。别的页面每次走网络——
+  // 以前一律先给存着的，改了别的页面（比如自己加的测试页）打开看到的总是上一次的版本
+  const sp = new URL(self.registration.scope).pathname;
+  if (url.pathname !== sp && url.pathname !== sp + 'index.html') return;
   const key = pageKey(req.url);
   const fresh = url.searchParams.has('fresh');
   const net = (async () => {

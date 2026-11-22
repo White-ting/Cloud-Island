@@ -155,3 +155,38 @@ test('开屏字幕：存、读、格式不对报 400；中文小字条数不够�
     assert.deepEqual([r.json.words.night.length, r.json.words.night[0].length], [5, 60]);
   } finally { await g.close(); }
 });
+
+test('改她最后一句（rewind）：后面的回复收进归档（gone+rewound），她那句换成新的、旧的留在 was，照新的一句重新回答；只许最后一句、她的、打字的', async () => {
+  const g = await setup();
+  try {
+    await g.call('POST', '/api/chat/o/send', { text: '今天吃什么' });
+    await g.call('POST', '/api/chat/o/send', { text: '我想吃面' });
+    let items = (await g.call('GET', '/api/chat/o')).json.items;
+    const [h1, , h2, a2] = items;
+    assert.equal(h2.text, '我想吃面');
+    // 不是最后一句、不是她的、空的、没有的
+    assert.equal((await g.call('POST', '/api/chat/o/rewind', { id: h1.id, text: 'x' })).status, 400);
+    assert.equal((await g.call('POST', '/api/chat/o/rewind', { id: a2.id, text: 'x' })).status, 400);
+    assert.equal((await g.call('POST', '/api/chat/o/rewind', { id: h2.id, text: '  ' })).status, 400);
+    assert.equal((await g.call('POST', '/api/chat/o/rewind', { id: 'nope', text: 'x' })).status, 404);
+    const n = g.up.seen.length;
+    const r = await g.call('POST', '/api/chat/o/rewind', { id: h2.id, text: '我想吃饭' });
+    assert.equal(r.status, 200);
+    assert.equal(g.up.seen.length, n + 1);
+    const sent = g.up.seen.at(-1).json.messages.filter((m) => m.role !== 'system');
+    assert.equal(sent.at(-1).content, '我想吃饭');
+    assert.equal(sent.filter((m) => m.role === 'assistant').length, 1); // 旧的那句回复不再带给模型
+    items = (await g.call('GET', '/api/chat/o')).json.items;
+    assert.deepEqual(items.map((m) => m.role), ['me', 'ai', 'me', 'ai']);
+    assert.equal(items[2].text, '我想吃饭');
+    assert.deepEqual(items[2].was, ['我想吃面']);
+    assert.notEqual(items[3].id, a2.id);
+    const gone = (await g.call('GET', '/api/chat/o?gone=1')).json.items.find((m) => m.id === a2.id);
+    assert.ok(gone && gone.gone && gone.rewound);
+    // 语音那句不能改
+    const f = g.files.saveBuf(WEBM, 'voice', { audio: true });
+    await g.call('POST', '/api/chat/o/send', { text: '语音的字', voice: { file: f.id, dur: 2 } });
+    const v = (await g.call('GET', '/api/chat/o')).json.items.findLast((m) => m.role === 'me');
+    assert.equal((await g.call('POST', '/api/chat/o/rewind', { id: v.id, text: '改' })).status, 400);
+  } finally { await g.close(); }
+});
