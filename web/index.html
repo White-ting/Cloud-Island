@@ -214,6 +214,9 @@ body.noav-ai .ai .av,body.noav-me .me .av{display:none}
 .plain.me .bub{color:var(--c-mute);text-align:right}
 .plain.ai .bub{color:var(--c-ink)}
 .plain .col{max-width:88%}
+/* 关了头像：气泡补长到原来有头像时能到的地方（头像 38 + 间距 8 = 46px） */
+body.noav-ai .msg.ai>.col,body.noav-me .msg.me>.col{max-width:calc(80% + 46px)}
+body.noav-ai .plain.ai>.col,body.noav-me .plain.me>.col{max-width:calc(88% + 46px)}
 /* 动作描写（*……* 包起来的）：斜体、小一号、淡一些，在正文上方。
    分段气泡时它不进气泡，是气泡之间的一行旁白；整段气泡和无气泡时是正文里单独的一行 */
 .actl,.bub .act{font-style:italic;font-size:14.5px;line-height:1.5}
@@ -398,6 +401,7 @@ body.calling.callmin #callPill{transform:translate(-50%,0);opacity:1;pointer-eve
 #nav,#sub{position:fixed;inset:0;z-index:6;color:var(--c-ink);background:#f2f2f7;transform:translateX(-100%);will-change:transform;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 30px)}
 body[class*="th-"] #nav,body[class*="th-"] #sub{background:var(--c-wash),var(--c-wash),var(--sky) center bottom/cover}
 #sub{z-index:7;transform:translateX(100%)}
+#nav,#sub{overflow-x:hidden;overscroll-behavior-x:none} /* 整页只能上下滑：里面哪样东西宽出屏幕也不会被左右拖开 */
 #sedge{position:fixed;left:0;top:0;bottom:0;width:22px;z-index:8;touch-action:none;display:none}
 body.subon #sedge{display:block}
 .nv-top{display:flex;align-items:center;justify-content:space-between;height:40px;margin-bottom:24px}
@@ -3784,8 +3788,8 @@ function step(dt) {
       P.x += wdir * 30 * dt; if (P.x < L) wdir = 1; if (P.x > R) wdir = -1;
       turnT -= dt; if (turnT < 0) { turnT = 2.5 + Math.random() * 5; if (Math.random() < .5) wdir = -wdir; pauseT = Math.random() < .6 ? .5 + Math.random() * 1.2 : 0; }
     }
-    if (idle > 40 && mood === 'normal' && !act) startAct('yawn');
-    const POOL = ['hop', 'fly', 'look', 'stretch', 'sway', 'wave', 'spin', 'squat', 'dance', 'sneeze', 'bubble'].concat(idle > 22 ? ['doze', 'doze', 'doze'] : []);
+    if (idle > 900 && mood === 'normal' && !act) startAct('yawn');   // 15 分钟没动静才趴下睡（原来 40 秒，太快）
+    const POOL = ['hop', 'fly', 'look', 'stretch', 'sway', 'wave', 'spin', 'squat', 'dance', 'sneeze', 'bubble'].concat(idle > 300 ? ['doze', 'doze', 'doze'] : []);
     const pick = mood === 'normal' && !act && !flip && idle > nextHop ? POOL[Math.random() * POOL.length | 0] : '';
     if (pick) nextHop = idle + 3.5 + Math.random() * 4;
     if (pick && pick !== 'hop') startAct(pick);
@@ -4890,7 +4894,7 @@ const FM = [
   ['img', '生图', 'TA 想画画时用', [['NovelAI（原生）', 'https://image.novelai.net', 'nai-diffusion-4-5-full'], ['OpenAI 兼容图片接口', 'https://api.openai.com/v1', 'gpt-image-1'], ['硅基流动', 'https://api.siliconflow.cn/v1', 'Kwai-Kolors/Kolors']]],
   ['trans', '翻译', 'TA 的话不是中文时，长按「翻译」', [['硅基流动', 'https://api.siliconflow.cn/v1', 'Qwen/Qwen3-8B'], ['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-flash'], ['DeepSeek', 'https://api.deepseek.com/v1', 'deepseek-chat']]],
   ['stt', '语音转文字', '你发的语音条转成字', [['硅基流动', 'https://api.siliconflow.cn/v1', 'FunAudioLLM/SenseVoiceSmall', ['FunAudioLLM/SenseVoiceSmall', 'Qwen/Qwen3-ASR-1.7B']], ['OpenAI', 'https://api.openai.com/v1', 'whisper-1'], ['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen3-asr-flash']]],
-  ['mood', '听语气', '听出你语音里的情绪和语速', [['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen3.8-omni-flash', ['qwen3.8-omni-flash', 'qwen3.5-omni-flash']], ['Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3-flash']]],
+  ['mood', '听语气', '听出你语音里的情绪和语速（百炼某个型号的免费额度用完会报 403，换列表里另一个型号）', [['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen3.8-omni-flash', ['qwen3.8-omni-flash', 'qwen3.5-omni-flash']], ['Gemini', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3-flash']]],
   ['tts', 'TA 的声音', '语音条和打电话时 TA 说话', [['ElevenLabs', 'https://api.elevenlabs.io/v1', 'eleven_v4', EL_M], ['MiniMax', 'https://api.minimaxi.com/v1', 'speech-2.6-hd'], ['硅基流动', 'https://api.siliconflow.cn/v1', 'FunAudioLLM/CosyVoice2-0.5B'], ['Cartesia', 'https://api.cartesia.ai', 'sonic-3.6', CA_M]]],
   ['memo', '记忆小模型', '夜里整理记忆前先帮 TA 过一遍材料', [['硅基流动', 'https://api.siliconflow.cn/v1', 'Qwen/Qwen3-8B'], ['阿里百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-flash'], ['本机 Ollama', 'http://127.0.0.1:11434/v1', 'qwen3.5:9b']]],
 ];
