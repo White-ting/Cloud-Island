@@ -613,3 +613,23 @@ test('导出 / 导入：待整理带时机和她的更正、不带收走的；�
   assert.deepEqual(r, { added: 2 });
   assert.deepEqual(g.digest.list('c').items.map((z) => [z.text, z.why, z.fix]), [['旧文件的一条', undefined, undefined], ['更正坏了', undefined, undefined]]);
 });
+
+test('夜里新记挡日记私人段：日记里 TA 自己留着的那段，新记里像它的不收', async () => {
+  const g = fresh();
+  g.clock.t = local(2026, 11, 15, 20);
+  g.digest.add('a', { text: '今天她发了张雨天的照片' });
+  g.s.add('a', { kind: 'note', text: '白天记的一条' }, 'ai'); // 有新记的，整理才跑
+  g.clock.t = local(2026, 11, 16, 3, 5);
+  g.fake.reply = (x) => {
+    if (x.system.endsWith(DIARY_PROMPT)) return JSON.stringify({ gist: '雨天', parts: [{ kind: '事', text: '她发了张雨天的照片' }, { kind: '我', text: '我偷偷把她发的那张雨天照片存下来当了屏保', priv: true }] });
+    if (x.system.endsWith(TIDY_PROMPT)) {
+      assert.ok(x.prompt.includes('当了屏保')); // 材料里有（TA 自己看）
+      return JSON.stringify({ add: [{ cat: '感情', kind: 'note', text: '我偷偷把她发的那张雨天照片存下来当屏保', quote: '好看' }, { cat: '事件', kind: 'note', text: '她今天发了张雨天的照片', quote: '下雨了' }] });
+    }
+    return '{}';
+  };
+  const out = await g.night.run('a');
+  assert.equal(out.tidy.added, 1);
+  const texts = g.s.load('a').items.map((m) => m.text);
+  assert.ok(texts.includes('她今天发了张雨天的照片') && !texts.some((t) => t.includes('屏保')));
+});

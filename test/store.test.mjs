@@ -320,3 +320,27 @@ test('网页地址：删 = 归档、?gone=1 看归档的、恢复、?purge=1 彻
     assert.equal((await call('POST', `/api/memory/a/${m.id}/restore`, null, hd)).code, 404);
   } finally { await srv.close(); }
 });
+
+test('格式不对的关键词、线索不让召回报错；导入时去掉；夜里新记的类别从关键词挪进 why；她那句不存进文件', () => {
+  const { s, dir } = fresh();
+  const a = s.add('a', { text: '她养了一只猫', kw: '猫' }, 'ai'); // 关键词写成了字
+  const d = s.load('a');
+  d.items.push({ id: 'kbad', t: 1, by: 'ai', kind: 'note', text: '她喜欢猫和狗', cues: { at: 1, list: '不是数组' } });
+  d.items.push({ id: 'knight', t: 1, by: 'ai', kind: 'note', text: '她今天很累', kw: ['情绪'], why: '夜里回头看记下的。原话：好累', src: 'night' });
+  d.sess = { lastT: 1, day: '2026-11-15', rounds: 1, her: '她上一句原话' };
+  s.save('a', d);
+  assert.doesNotThrow(() => s.recall('a', '猫'));
+  assert.ok(s.recall('a', '她养了一只猫').some((m) => m.id === a.id));
+  const n = s.load('a').items.find((m) => m.id === 'knight');
+  assert.equal(n.kw, undefined);
+  assert.equal(n.why, '夜里回头看记下的（情绪）。原话：好累');
+  assert.equal(s.load('a').sess.her, undefined);
+  s.tick('a', [], { shown: [] });
+  assert.ok(!fs.readFileSync(path.join(dir, 'a', 'mem.json'), 'utf8').includes('她上一句原话'));
+  // 导入
+  s.importAll('b', { items: [{ id: 'x1', kind: 'note', text: '一', kw: 'abc', cues: { at: 5, list: 'x' } }, { id: 'x2', kind: 'note', text: '二', kw: ['好', 3], cues: { at: 5, list: [{ k: '处境', text: '在家' }, { k: 1 }] } }] });
+  const [x1, x2] = s.load('b').items;
+  assert.deepEqual([x1.kw, x1.cues], [undefined, { at: 5, list: [] }]);
+  assert.deepEqual([x2.kw, x2.cues], [['好'], { at: 5, list: [{ k: '处境', text: '在家' }] }]);
+  assert.doesNotThrow(() => s.recall('b', '在家'));
+});

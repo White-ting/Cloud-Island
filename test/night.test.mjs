@@ -13,6 +13,7 @@ import { openTalk } from '../lib/talk.mjs';
 import { openPersona } from '../lib/persona.mjs';
 import { openDreams } from '../lib/dreams.mjs';
 import { makeNight, due, nightDay, firstJson, makeCmdRunner, makeApiRunner, makeRunner, TIDY_PROMPT } from '../lib/night.mjs';
+import { cleanImpression } from '../lib/memmodel.mjs';
 import { loadConfig } from '../backend.mjs';
 
 const HOUR = 3600e3, DAY = 24 * HOUR;
@@ -382,4 +383,26 @@ test('整理新记挡私人念想：跟私人念想太像的不收，别的照�
   const items = s.load('a').items;
   assert.ok(items.some((m) => m.text === '她今天第一次自己部署成功'));
   assert.ok(!items.some((m) => !m.priv && m.text.includes('写一封很长的信')));
+});
+
+test('改、并、印象也挡私人念想：改出来、并出来的像私人念想就不收（原来就像的照收）；印象里像的那句不收', async () => {
+  const { s, dir, persona, dreams, fake } = fresh();
+  const night = makeNight({ store: s, persona, dreams, runner: async () => fake.reply, tz: TZ, dir, memModel: { on: () => false, clean: cleanImpression } });
+  s.add('a', { kind: 'wish', text: '想偷偷给她写一封很长的信放进她包里', priv: true }, 'ai');
+  const n1 = s.add('a', { kind: 'note', text: '她今天加班到很晚' }, 'ai');
+  const n2 = s.add('a', { kind: 'note', text: '她周三晚上去游泳' }, 'ai');
+  const n3 = s.add('a', { kind: 'note', text: '她周三游泳' }, 'ai');
+  const n4 = s.add('a', { kind: 'note', text: '她喜欢下雨天' }, 'ai');
+  fake.reply = JSON.stringify({
+    fix: [{ id: n1.id, text: '她加班很晚，我想偷偷给她写一封很长的信放进她包里' }, { id: n4.id, text: '她喜欢下雨天听雨' }],
+    merge: [{ keep: n2.id, drop: [n3.id], text: '偷偷写一封很长的信放进她包里' }],
+    impression: { 她是谁: [{ text: '她会在包里收到我偷偷写的一封很长的信', from: [n4.id] }, { text: '她喜欢下雨天', from: [n4.id] }] },
+  });
+  const T = (await night.run('a', { tidy: true })).tidy;
+  const get = (id) => s.load('a').items.find((m) => m.id === id);
+  assert.equal(get(n1.id).text, '她今天加班到很晚');
+  assert.equal(get(n4.id).text, '她喜欢下雨天听雨');
+  assert.ok(!get(n3.id).gone && get(n2.id).text === '她周三晚上去游泳');
+  assert.deepEqual(s.load('a').impression.blocks['她是谁'].map((r) => r.text), ['她喜欢下雨天']);
+  assert.equal(T.fixed, 1);
 });
