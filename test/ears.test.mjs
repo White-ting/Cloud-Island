@@ -1,4 +1,4 @@
-// 量录音（11-22）：网页 web/ears.js 量数，后端 lib/ears.mjs 核数、跟她平时比、写成〔测量〕那一行；聊天把它带给 TA。
+// 量录音：网页 web/ears.js 量数，后端 lib/ears.mjs 核数、跟她平时比、写成〔测量〕那一行；聊天把它带给 TA。
 // 上游是测试进程里起的假 HTTP 服务。
 import { test, after as afterAll } from 'node:test';
 import assert from 'node:assert/strict';

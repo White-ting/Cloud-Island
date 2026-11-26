@@ -602,7 +602,7 @@ test('TA 主动开口时她发来一句：wake 让给她（断开、不存、抛
   } finally { await g.close(); }
 });
 
-// ---- 11-17 缓存：截断点站稳、用量和命中、上游不收附加项 ----
+// ---- 缓存：截断点站稳、用量和命中、上游不收附加项 ----
 test('截断点站稳：last n 攒到一倍半才切回 n；all + ctxMax 切到七成后不动，开头几句连着几次都一样', async () => {
   const g = await setup({ ais: [{ id: 'o', model: 'm', style: 'openai', keyEnv: 'AI_KEY' }] });
   try {

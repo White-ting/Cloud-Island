@@ -121,7 +121,7 @@ test('日记：小记追加一段（day 不写是今天、kind 四种、priv）�
     assert.deepEqual(mine.items[0], { day: '2026-11-15', t: e.t, gist: '她加班，我陪着', parts: [{ text: '她加班到十点', kind: '事' }, { text: '她很累', kind: '她' }], privN: 1 });
     assert.ok(!JSON.stringify(mine).includes('心疼'));
     assert.deepEqual((await call('GET', '/api/diary/a?before=2026-11-15&limit=5')).body.items.map((x) => x.day), ['2026-11-12']);
-    // 11-16 改：她看得到正文了（每天几条照旧给，另加 items）
+    // 她看得到正文（每天几条照旧给，另加 items）
     const dg = (await call('GET', '/api/digest/a')).body;
     assert.deepEqual(dg.days, [{ day: '2026-11-08', n: 1 }, { day: '2026-11-16', n: 1 }]);
     assert.deepEqual(dg.items.map((x) => [x.day, x.text]), [['2026-11-08', '太早的'], ['2026-11-16', '今天的']]);
@@ -182,7 +182,7 @@ test('旁听的小模型：默认关；改设置要口令、key 只存变量名�
   });
   await new Promise((ok) => srv0.listen(0, '127.0.0.1', ok));
   const base = `http://127.0.0.1:${srv0.address().port}`;
-  const g = fresh({ keyOrigins: 'HELPER_KEY=' + base }); // 11-19：旁听用的 Key 要在 .env 的 HELPER_KEY_ORIGINS 登记能发到哪
+  const g = fresh({ keyOrigins: 'HELPER_KEY=' + base }); // 旁听用的 Key 要在 .env 的 HELPER_KEY_ORIGINS 登记能发到哪
   const srv = createServer({ cfg: { port: 0, hookToken: 'tok' }, store: g.s, hooks: g.h, helper: g.helper });
   const { port } = await srv.listen();
   const call = async (method, p, body, headers = {}) => {
@@ -191,7 +191,7 @@ test('旁听的小模型：默认关；改设置要口令、key 只存变量名�
   };
   try {
     assert.deepEqual((await call('GET', '/api/helper/a')).body, { on: false, model: '', local: null, key: false, talk: true });
-    // 11-18 起：网页里改（跟别的设置一样），HOOK_TOKEN 不再需要、也不算数
+    // 网页里改（跟别的设置一样），HOOK_TOKEN 不再需要、也不算数
     const T = {};
     assert.equal((await call('PUT', '/api/helper/a', { on: true }, T)).code, 400); // 没填地址和模型
     assert.equal((await call('PUT', '/api/helper/a', { keyEnv: SECRET }, T)).code, 400); // 不是变量名
@@ -213,7 +213,7 @@ test('旁听的小模型：默认关；改设置要口令、key 只存变量名�
     assert.equal(seen[0].j.model, 'qwen-small');
     assert.ok(seen[0].j.messages[1].content.includes('她：我们去看海吧') && seen[0].j.messages[1].content.includes('TA：好，我也想去。'));
     assert.deepEqual(g.digest.pending('a').map((x) => [x.by, x.text]), [['helper', '她说想去看海，我听着也想去。']]);
-    assert.equal(g.digest.pending('a')[0].why, 'idle'); // 11-16：记下是哪个时机
+    assert.equal(g.digest.pending('a')[0].why, 'idle'); // 记下是哪个时机
     // 只读上次散场记以后的
     g.clock.t += 60e3;
     await g.h.before('a', { text: '明天几点出发', sid: 's1' });
@@ -498,7 +498,7 @@ test('快压缩 / 一场结束（钩子口）：② 跌进 10% 那次回 digest:
   } finally { await srv.close(); }
 });
 
-// 11-16：待整理她看得到正文，能加更正、收走
+// 待整理她看得到正文，能加更正、收走
 test('待整理她看得到：GET 带正文、时机（散场记的 why；聊天当中写的没有）、不带会话编号；加更正不动原话、能改能删；收走标 gone 不真删、哪儿都当不存在、30 天后清；锁着要开锁；流水不带内容；写成日记的动不了', async () => {
   const g = fresh();
   await g.h.before('a', { text: '我周四去体检', sid: 's1' });
@@ -632,4 +632,22 @@ test('夜里新记挡日记私人段：日记里 TA 自己留着的那段，新�
   assert.equal(out.tidy.added, 1);
   const texts = g.s.load('a').items.map((m) => m.text);
   assert.ok(texts.includes('她今天发了张雨天的照片') && !texts.some((t) => t.includes('屏保')));
+});
+
+test('材料里日记私人段标出来；日记的一句话（她看得到）像私人段就不留', async () => {
+  const g = fresh();
+  g.clock.t = local(2026, 11, 15, 20);
+  g.digest.add('a', { text: '今天她发了张雨天的照片' });
+  g.s.add('a', { kind: 'note', text: '白天记的一条' }, 'ai');
+  g.clock.t = local(2026, 11, 16, 3, 5);
+  let tidyPrompt = '';
+  g.fake.reply = (x) => {
+    if (x.system.endsWith(DIARY_PROMPT)) return JSON.stringify({ gist: '我偷偷把她发的那张雨天照片存下来当了屏保', parts: [{ kind: '事', text: '她发了张雨天的照片' }, { kind: '我', text: '我偷偷把她发的那张雨天照片存下来当了屏保', priv: true }] });
+    if (x.system.endsWith(TIDY_PROMPT)) { tidyPrompt = x.prompt; return '{}'; }
+    return '{}';
+  };
+  await g.night.run('a');
+  assert.ok(tidyPrompt.includes('[我·你自己留着的]我偷偷') && tidyPrompt.includes('[事]她发了张'));
+  assert.equal(g.diary.get('a', '2026-11-15').gist, '');
+  assert.ok(DIARY_PROMPT.includes('gist 她看得到'));
 });

@@ -2623,7 +2623,7 @@ function recOne() {                                           // 回 { blob, sec
     const mime = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm'].find(x => MediaRecorder.isTypeSupported(x)) || '';
     let mr; try { mr = new MediaRecorder(CALL.stream, mime ? { mimeType: mime, audioBitsPerSecond: 64000 } : undefined); } catch (e) { callEvent({ err: '录不了音：' + e.message }); return ok(null); }
     const chunks = []; let said = false, quiet = 0, last = Date.now(), tS = 0, tk = null; const t0 = Date.now();
-    // 边说边传（11-23）：录音每 0.25 秒出一块，一开口就把攒着的和之后的块一块块传上去（/api/voice/part），说完只差最后一点。
+    // 边说边传：录音每 0.25 秒出一块，一开口就把攒着的和之后的块一块块传上去（/api/voice/part），说完只差最后一点。
     // 哪块没传上去就不用这条路了，整段照旧传（chunks 一直都留着）
     const pid = (Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 24), type = () => (mr.mimeType || 'audio/mp4').split(';')[0];
     let sent = 0, partOK = true;

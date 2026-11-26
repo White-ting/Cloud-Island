@@ -18,7 +18,7 @@ const dirs = [];
 afterAll(() => { for (const d of dirs) fs.rmSync(d, { recursive: true, force: true }); });
 
 // answer(活的名字, prompt) → 回的文字；asked 记下每次发给小模型的 prompt
-function fresh({ answer = () => '[]' } = {}) {
+function fresh({ answer = () => '[]', limits } = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ta-mm-'));
   dirs.push(dir);
   const clock = { t: local(2026, 11, 20, 2) };
@@ -29,7 +29,7 @@ function fresh({ answer = () => '[]' } = {}) {
   const runnerOf = (opt) => { made.push(opt); return async ({ prompt }) => { const k = which(prompt); asked.push({ k, prompt }); return answer(k, prompt); }; };
   // 公开版：地址和 Key 走 makeSlotGuard。测试里网络检查放行（不真解析域名），Key 登记成只能发到 api.example.com
   const guard = makeSlotGuard({ net: { okSync() {}, async check() {} }, keyOrigins: 'SF_KEY=https://api.example.com' });
-  const mm = makeMemModel({ store: s, tz: TZ, runnerOf, keyOf: (n) => (n === 'SF_KEY' ? 'k-123' : ''), guard });
+  const mm = makeMemModel({ store: s, tz: TZ, runnerOf, keyOf: (n) => (n === 'SF_KEY' ? 'k-123' : ''), guard, limits });
   return { s, clock, mm, asked, made };
 }
 const ON = { on: true, url: 'https://api.example.com', model: 'flash', keyEnv: 'SF_KEY' };
@@ -252,4 +252,33 @@ test('线索回得不对：不是数组就不记，这一批下次再问', async
   s.add('a', { kind: 'note', text: '一条' }, 'ai');
   assert.equal(await mm.cues('a'), 0);
   assert.equal(s.load('a').items[0].cues, undefined);
+});
+
+test('回的编号一个都对不上不算问过；一批出错别的批照样存；没问成的先跳过、连着 3 次就记成问过了', async () => {
+  const twenty = (g) => { const xs = []; for (let i = 0; i < 20; i++) { g.clock.t += 1000; xs.push(g.s.add('a', { kind: 'note', text: `第 ${i} 条记忆` }, 'ai')); } return xs; }; // 一条比一条新
+  // 编号全对不上：一条都不记，下回（跳过时间过了）还问
+  const A = fresh({ answer: (k) => (k === 'cue' ? JSON.stringify([{ id: 'nope', cues: [{ k: '处境', text: 'x' }] }]) : '[]') });
+  A.mm.set('a', ON); twenty(A);
+  assert.equal(await A.mm.cues('a'), 0);
+  assert.ok(A.s.load('a').items.every((m) => !m.cues));
+  // 第一批（新的 15 条）出错，第二批（5 条）照样存
+  let first = '';
+  const B = fresh({ answer: (k, p) => {
+    if (k !== 'cue') return '[]';
+    const ids = [...p.matchAll(/"id":"([^"]+)"/g)].map((x) => x[1]);
+    if (ids.includes(first)) throw Object.assign(new Error('400'), { safe: true });
+    return JSON.stringify(ids.map((id) => ({ id, cues: [{ k: '处境', text: '在家' }] })));
+  } });
+  B.mm.set('a', ON); first = twenty(B).at(-1).id; // 新的先问：最新那条在第一批
+  assert.equal(await B.mm.cues('a'), 5);
+  assert.equal(B.s.load('a').items.filter((m) => m.cues).length, 5);
+  // 没问成的先跳过：下回先问别的（这里别的都问过了，就没有要问的）
+  assert.equal(await B.mm.cues('a'), 0);
+  // 跳过时间设成 0：同一批连着 3 次没问成，记成问过了、没线索
+  const C = fresh({ limits: { cueSkip: 0 }, answer: (k) => { if (k === 'cue') throw Object.assign(new Error('400'), { safe: true }); return '[]'; } });
+  C.mm.set('a', ON); C.s.add('a', { kind: 'note', text: '一条老问不成的' }, 'ai');
+  await C.mm.cues('a'); await C.mm.cues('a');
+  assert.equal(C.s.load('a').items[0].cues, undefined);
+  await C.mm.cues('a');
+  assert.deepEqual(C.s.load('a').items[0].cues.list, []);
 });

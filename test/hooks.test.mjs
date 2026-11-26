@@ -522,3 +522,32 @@ test('冷却轮数：说到了的正好歇 6 轮，第 7 轮回来；没有 befo
   await ask('雨天听唱片'); h.after('a', { reply: '好' }); s.flush?.();
   assert.equal(s.load('a').items.find((m) => m.id === a.id).used || 0, u0);
 });
+
+test('固有的被问到照样记「被用到」（山照长）；正文是空的（只交小记）不数冷却', async () => {
+  const { s, h, clock } = fresh();
+  const p = s.add('a', { kind: 'note', text: '她叫小满，喜欢下雨天', pin: true }, 'ai');
+  const n = s.add('a', { kind: 'note', text: '她周三晚上去游泳馆游泳' }, 'ai');
+  await h.before('a', { text: '她喜欢下雨天' }); clock.t += 60e3;
+  s.flush();
+  assert.equal(s.load('a').items.find((m) => m.id === p.id).used, 1);
+  for (let i = 0; i < 4; i++) { await h.before('a', { text: '周三晚上去游泳' }); clock.t += 60e3; h.after('a', { reply: N({ kind: 'note', text: `只交小记 ${i}` }) }); }
+  assert.ok(!s.cooling('a').has(n.id), '只交小记的几轮不算没说到');
+});
+
+test('一轮好几段回复（先说一句再调工具）联想以最后一次为准；太短的不备', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ta-')); dirs.push(dir);
+  const clock = { t: Date.UTC(2026, 10, 15, 4) }, now = () => clock.t;
+  const s = openStore({ dir, tz: 'Asia/Shanghai', now, rand: () => 0, recallCfg: { callAt: 0.1 } }), h = makeHooks({ store: s, tz: 'Asia/Shanghai' });
+  const old = s.add('a', { kind: 'note', text: '她十月说过想学做红烧肉，要找周末试' }, 'ai');
+  const trip = s.add('a', { kind: 'note', text: '她下个月要去杭州出差三天' }, 'ai');
+  clock.t += 60e3;
+  await h.before('a', { text: '晚上吃什么好呢' });
+  h.after('a', { reply: '我查一下' }); // 太短，不备
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual(s.load('a').calls || [], []);
+  h.after('a', { reply: '对了你下个月去杭州出差三天，要不要提前准备' });
+  h.after('a', { reply: '要不试试红烧肉，你之前说想学做红烧肉，周末试一下' });
+  await new Promise((r) => setTimeout(r, 30));
+  const ids = (s.load('a').calls || []).map((x) => x.id);
+  assert.ok(ids.includes(old.id) && ids.includes(trip.id), '用的是这一轮攒下的全部回复');
+});

@@ -49,7 +49,7 @@ test('什么时候跑：过了设定的时间、这一「夜里的一天」还�
   assert.equal(due({ now: local(2026, 11, 16, 3, 1), night, lastT: local(2026, 11, 15, 3, 10), tz: TZ }), true);
   assert.equal(due({ now: local(2026, 11, 16, 23, 0), night, lastT: local(2026, 11, 16, 3, 1), tz: TZ }), false);
   assert.equal(due({ now: local(2026, 11, 16, 23, 0), night: { at: '22:30', dream: true }, lastT: local(2026, 11, 16, 3, 1), tz: TZ }), true);
-  assert.equal(due({ now: local(2026, 11, 16, 4, 0), night: {}, lastT: null, tz: TZ }), true); // 11-16 起整理默认开（第一晚不跑靠调度时记下的 from）
+  assert.equal(due({ now: local(2026, 11, 16, 4, 0), night: {}, lastT: null, tz: TZ }), true); // 整理默认开（第一晚不跑靠调度时记下的 from）
   assert.equal(due({ now: local(2026, 11, 16, 4, 0), night: { tidy: false }, lastT: null, tz: TZ }), false); // 两件都关
 });
 
@@ -261,7 +261,7 @@ test('调度：开了才跑、过了时间跑一次、当天不再跑、第二�
   s.add('b', { text: '另一个 TA 的' });
   fake.reply = '{"note":"好"}';
   clock.t = local(2026, 11, 16, 2, 0);
-  night.set('b', { tidy: false }); // 11-16 起整理默认开：b 显式关掉，看「开了才跑」
+  night.set('b', { tidy: false }); // 整理默认开：b 显式关掉，看「开了才跑」
   assert.deepEqual(await night.tick(), []); // 全新的：记下今天（from），第一晚不跑
   assert.ok(s.load('a').cfg.night.from);
   night.set('a', { tidy: true });
@@ -405,4 +405,23 @@ test('改、并、印象也挡私人念想：改出来、并出来的像私人�
   assert.ok(!get(n3.id).gone && get(n2.id).text === '她周三晚上去游泳');
   assert.deepEqual(s.load('a').impression.blocks['她是谁'].map((r) => r.text), ['她喜欢下雨天']);
   assert.equal(T.fixed, 1);
+});
+
+test('山的理由和名字像私人的不留（山照抬）；像私人的问话标 priv；挡下几处记在 privDropped', async () => {
+  const { s, night, fake } = fresh();
+  s.setCfg('a', { hill: true });
+  s.add('a', { kind: 'wish', text: '想偷偷给她写一封很长的信放进她包里', priv: true }, 'ai');
+  const n = s.add('a', { kind: 'note', text: '她第一次自己部署成功' }, 'ai');
+  fake.reply = JSON.stringify({
+    hill: [{ id: n.id, why: '我想偷偷给她写一封很长的信放进她包里', name: '偷偷写一封很长的信放进她包里' }],
+    ask: [{ about: null, q: '要不要把想偷偷给她写一封很长的信放进她包里记成约定' }, { about: null, q: '那条约定还作数吗' }],
+  });
+  const T = (await night.run('a', { tidy: true })).tidy;
+  const m = s.load('a').items.find((x) => x.id === n.id);
+  assert.ok((m.hAi || 0) > 0 || (m.h || 0) > 0, '山照抬');
+  assert.ok(!JSON.stringify(m.hTrail || []).includes('写一封很长的信') && !m.hName);
+  const asks = s.load('a').nightAsk;
+  assert.deepEqual(asks.map((a) => !!a.priv), [true, false]);
+  assert.equal(T.privDropped, 2);
+  assert.equal(s.load('a').nightNews.tidy.privDropped, 2);
 });

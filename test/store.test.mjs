@@ -340,7 +340,32 @@ test('格式不对的关键词、线索不让召回报错；导入时去掉；�
   // 导入
   s.importAll('b', { items: [{ id: 'x1', kind: 'note', text: '一', kw: 'abc', cues: { at: 5, list: 'x' } }, { id: 'x2', kind: 'note', text: '二', kw: ['好', 3], cues: { at: 5, list: [{ k: '处境', text: '在家' }, { k: 1 }] } }] });
   const [x1, x2] = s.load('b').items;
-  assert.deepEqual([x1.kw, x1.cues], [undefined, { at: 5, list: [] }]);
-  assert.deepEqual([x2.kw, x2.cues], [['好'], { at: 5, list: [{ k: '处境', text: '在家' }] }]);
+  assert.deepEqual([x1.kw, x1.cues], [['abc'], { at: 5, list: [] }]); // 单个字串包成一个
+  assert.deepEqual([x2.kw, x2.cues], [['好', '3'], { at: 5, list: [{ k: '处境', text: '在家' }] }]);
   assert.doesNotThrow(() => s.recall('b', '在家'));
+});
+
+test('from/ppl 写成字串、text 不是字串：读的时候整理好当场写回，列表、召回、连线都不报错；不碰还没写盘的「被用到」', () => {
+  const { s, dir } = fresh();
+  const a = s.add('a', { text: '她养了一只猫叫团子' }, 'ai');
+  s.recall('a', '她养了一只猫叫团子'); // 记一次「被用到」，还在内存里
+  const f = path.join(dir, 'a', 'mem.json');
+  const raw = JSON.parse(fs.readFileSync(f, 'utf8'));
+  raw.items.push({ id: 'kfrom', t: 2, by: 'ai', kind: 'note', text: '团子今天打喷嚏', from: a.id, ppl: '她' });
+  raw.items.push({ id: 'knum', t: 3, by: 'ai', kind: 'note', text: 12345 });
+  fs.writeFileSync(f, JSON.stringify(raw));
+  assert.doesNotThrow(() => s.list('a', { who: 'ai' }));
+  assert.doesNotThrow(() => s.recall('a', '团子打喷嚏', 5, { who: 'me' })); // 她那边查，不记被用到
+  assert.doesNotThrow(() => s.links('a', 'kfrom'));
+  const disk = JSON.parse(fs.readFileSync(f, 'utf8')).items;
+  assert.deepEqual([disk.find((m) => m.id === 'kfrom').from, disk.find((m) => m.id === 'kfrom').ppl, disk.find((m) => m.id === 'knum').text], [[a.id], ['她'], '12345']);
+  s.flush();
+  assert.equal(s.load('a').items.find((m) => m.id === a.id).used, 1); // 写回去的时候没把内存里那次弄丢、也没算两遍
+  // 写入口也整理
+  const b = s.add('a', { text: '新的一条', from: a.id, kw: '猫' }, 'ai');
+  assert.deepEqual([b.from, b.kw], [[a.id], ['猫']]);
+  s.patch('a', b.id, { kw: '狗' }, { who: 'ai' });
+  assert.deepEqual(s.load('a').items.find((m) => m.id === b.id).kw, ['狗']);
+  // 导入：text 不是字串的不收
+  assert.equal(s.importAll('c', { items: [{ id: 'z1', kind: 'note', text: 42 }, { id: 'z2', kind: 'note', text: '好的', from: 'z1' }] }).added, 1);
 });

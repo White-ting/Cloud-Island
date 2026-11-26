@@ -272,7 +272,7 @@ test('Key 跟着地址走：AI 单独改到别的地址不带 Key；设置里换
     // 只换地址、不给 Key：旧 Key 清掉
     let v = g.svc.putFm('tts', { url: other + '/sf/v1' });
     assert.equal(v.hasKey, false);
-    // 换地址时 Key 只填了空格：当没给，旧 Key 不能借这个带过去（11-19 sol 复审）
+    // 换地址时 Key 只填了空格：当没给，旧 Key 不能借这个带过去
     g.svc.putFm('tts', { url: g.base + '/sf/v1', key: KEY });
     v = g.svc.putFm('tts', { url: other + '/sf/v1', key: '   ' });
     assert.equal(v.hasKey, false);

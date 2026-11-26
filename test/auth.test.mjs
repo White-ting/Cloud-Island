@@ -83,7 +83,7 @@ test('会改东西的网页请求：Origin 要是同一个站、Sec-Fetch-Site �
     assert.equal((await g.raw('POST', '/api/login', { headers: { ...H, origin: 'https://evil.example' }, body: '{}' })).status, 403);
     assert.equal((await g.raw('POST', '/api/memory/a', { headers: { ...H, origin: me, 'sec-fetch-site': 'same-origin' }, body })).status, 200);
     assert.equal((await g.raw('POST', '/api/memory/a', { headers: H, body })).status, 200); // 没带 Origin：不是浏览器
-    // 11-19 sol 复审：同一台机器别的端口不算这个站；同站的别的子域（same-site）也拦；Host 白名单不当成能来改东西的名单
+    // 同一台机器别的端口不算这个站；同站的别的子域（same-site）也拦；Host 白名单不当成能来改东西的名单
     assert.equal((await g.raw('POST', '/api/memory/a', { headers: { ...H, origin: 'http://127.0.0.1:1' }, body })).status, 403);
     assert.equal((await g.raw('POST', '/api/memory/a', { headers: { ...H, 'sec-fetch-site': 'same-site' }, body })).status, 403);
     assert.equal((await g.raw('POST', '/api/memory/a', { headers: { ...H, origin: 'http://localhost:' + g.port }, body })).status, 403);
