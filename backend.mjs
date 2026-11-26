@@ -30,7 +30,7 @@ import { openPush } from './lib/push.mjs';
 import { makeHelper, makeSlotGuard } from './lib/helper.mjs';
 import { makeNet } from './lib/net.mjs';
 
-export const VERSION = '1.3.0';
+export const VERSION = '1.4.0';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 export function loadConfig(baseDir = here, env = process.env) {
@@ -148,6 +148,7 @@ async function main() {
     busy = true;
     (async () => {
       await night.tick().catch((e) => log('夜里调度出错', e.message));
+      try { memModel.cueTick(fs.readdirSync(cfg.dataDir).filter((x) => /^[A-Za-z0-9_-]{1,40}$/.test(x) && fs.existsSync(path.join(cfg.dataDir, x, 'mem.json')))); } catch (e) { log('线索调度出错', e.message); } // 记忆小模型开着的 AI：给没线索的记忆补线索
       try { knock.timers.fire((ai, x) => inbox.put(ai, x)); } catch (e) { log('回头看调度出错', e.message); }
       await inbox.pumpAll();
     })().catch((e) => log('每分钟那次检查出错', e.message)).finally(() => { busy = false; });

@@ -450,3 +450,58 @@ test('召回带日期：今年的写月-日，往年的写全年月日', async (
   assert.match(c, /（记事，2025-11-08）去年冬天/);
   assert.match(c, /（记事，11-08）今年她又说起/);
 });
+
+test('冷却：递过去、TA 说到了的歇 6 轮；连着 3 轮没说到的歇 3 轮；她原样问到照样递', async () => {
+  const { s, h, clock } = fresh();
+  const a = s.add('a', { kind: 'note', text: '她喜欢在雨天听黑胶唱片' }, 'ai');
+  const b = s.add('a', { kind: 'note', text: '她周三晚上去游泳馆游泳' }, 'ai');
+  const ask = async (t) => { clock.t += 60e3; return (await h.before('a', { text: t })).context; };
+  // 第 1 轮：两条都递了；TA 说到了唱片那条
+  let c = await ask('雨天听唱片还是游泳');
+  assert.ok(c.includes(a.id) && c.includes(b.id));
+  h.after('a', { reply: '下雨天就适合听黑胶唱片呀' });
+  // 接下来 6 轮里唱片那条歇着（游泳那条没说到，照常递，连着 3 轮没说到后也歇）
+  c = await ask('雨天听唱片还是游泳'); assert.ok(!c.includes(a.id) && c.includes(b.id)); h.after('a', { reply: '嗯' });
+  c = await ask('雨天听唱片还是游泳'); assert.ok(!c.includes(a.id) && c.includes(b.id)); h.after('a', { reply: '嗯' });
+  c = await ask('雨天听唱片还是游泳'); assert.ok(!c.includes(a.id) && !c.includes(b.id)); h.after('a', { reply: '嗯' });
+  // 她原样说出那条：歇着也递
+  c = await ask('她喜欢在雨天听黑胶唱片'); assert.ok(c.includes(a.id));
+  h.after('a', { reply: '嗯' });
+  // 过了 6 轮：唱片那条回来
+  for (let i = 0; i < 4; i++) { await ask('随便聊聊天气'); h.after('a', { reply: '好' }); }
+  c = await ask('雨天听唱片还是游泳'); assert.ok(c.includes(a.id));
+});
+
+test('联想：回复后拿这一来一回备着，下一句挑一件带全文；跟这轮想起来的重了不挑；打算过了日子写明没记到结果', async () => {
+  // 门槛 0.62 是照向量分定的；这里没向量、只有字面，门槛放低
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ta-')); dirs.push(dir);
+  const clock = { t: Date.UTC(2026, 10, 15, 4) }, now = () => clock.t;
+  const s = openStore({ dir, tz: 'Asia/Shanghai', now, rand: () => 0, recallCfg: { callAt: 0.1 } }), h = makeHooks({ store: s, tz: 'Asia/Shanghai' });
+  const old = s.add('a', { kind: 'note', text: '她十月说过想学做红烧肉，要找周末试' }, 'ai');
+  s.add('a', { kind: 'wish', text: '想跟她一起学做红烧肉，周末试' }, 'ai'); // 念想不备
+  const d0 = s.load('a'); d0.items.find((m) => m.id === old.id).tag = { emo: 0, follow: { what: '周末试做红烧肉', day: '2026-11-01' }, ppl: [], at: 1 }; s.save('a', d0);
+  const ask = async (t) => { clock.t += 60e3; return (await h.before('a', { text: t })).context; };
+  // 这轮没递到，回复里聊到了：备着
+  await ask('晚上吃什么好呢');
+  h.after('a', { reply: '要不试试红烧肉，你之前说想学做红烧肉，周末试一下' });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepEqual((s.load('a').calls || []).map((x) => x.id), [old.id]);
+  // 下一句：挑这一件，带全文和「没记到结果」
+  const c = await ask('今天好累');
+  assert.ok(c.includes('联想到的') && c.includes(old.id) && c.includes('没记到结果'));
+  assert.deepEqual(s.load('a').calls, []); // 挑走了
+  h.after('a', { reply: '嗯' });
+  await new Promise((r) => setTimeout(r, 20));
+  // 这轮「想起来的」里已经有它：不再备
+  await ask('今天食堂又是红烧肉');
+  h.after('a', { reply: '嗯' });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.ok(!(s.load('a').calls || []).some((x) => x.id === old.id));
+});
+
+test('应声不召回：ok、好、1 不递想起来的；两个字的名字照样递', async () => {
+  const { s, h } = fresh();
+  s.add('a', { kind: 'note', text: 'ok 那天她说好的团子' }, 'me');
+  for (const t of ['ok', '好的。', '1', '嗯嗯']) assert.ok(!(await h.before('a', { text: t })).context.includes('想起来的'), t);
+  assert.ok((await h.before('a', { text: '团子' })).context.includes('想起来的'));
+});

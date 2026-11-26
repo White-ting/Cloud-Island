@@ -339,3 +339,33 @@ test('刚打开的那一天不跑，等下一个设定的时间；给网页的�
   assert.equal(due({ now: on + 5 * 3600e3, night: { at, tidy: true, from: on }, tz }), true); // 第二天 04:00
   assert.equal(due({ now: on + 60e3, night: { at, tidy: true }, tz }), true); // 老数据没有 from：照旧
 });
+
+test('整理新记：只收记事/看法/经验、要带原话、不收重复和超长、一晚最多 8 条；记成 TA 自己记的，带类别和原话；整理时 TA 又记的不被盖掉', async () => {
+  const { s, night, fake } = fresh();
+  s.add('a', { text: '已经有的一条' });
+  const long = '长'.repeat(241);
+  const good = (i) => ({ cat: '情绪', kind: 'note', text: `她今天第${i}件事`, quote: `原话${i}` });
+  fake.reply = () => {
+    s.add('a', { kind: 'exp', text: '跑模型时 TA 又记的' }, 'ai'); // 模拟整理这段时间里新记的
+    return JSON.stringify({ add: [
+      { cat: '认知', kind: 'view', text: '她喜欢一步一步来', quote: '先说清楚再做' },
+      { cat: '感情', kind: 'wish', text: '念想不收', quote: 'x' },
+      { kind: 'note', text: '没有原话的不收' },
+      { kind: 'note', text: '已经有的一条', quote: 'x' },
+      { kind: 'note', text: long, quote: 'x' },
+      { cat: '乱写', kind: 'exp', text: '类别乱写也收，只是不带类别', quote: 'y' },
+      ...Array.from({ length: 10 }, (_, i) => good(i)),
+    ] });
+  };
+  const T = (await night.run('a', { tidy: true })).tidy;
+  assert.equal(T.added, 8);
+  const items = s.load('a').items;
+  assert.ok(items.some((m) => m.text === '跑模型时 TA 又记的'));
+  const v = items.find((m) => m.text === '她喜欢一步一步来');
+  assert.deepEqual([v.kind, v.by, v.src, v.kw, v.ppl], ['view', 'ai', 'night', ['认知'], ['她']]);
+  assert.ok(v.why.includes('先说清楚再做'));
+  assert.equal(items.find((m) => m.text.startsWith('类别乱写')).kw, undefined);
+  assert.ok(!items.some((m) => m.text === '念想不收' || m.text === '没有原话的不收' || m.text === long));
+  assert.equal(items.filter((m) => m.text === '已经有的一条').length, 1);
+  assert.equal(s.load('a').nightNews.tidy.added, 8);
+});

@@ -187,3 +187,46 @@ test('v1.2.1：没单独设地址的 AI 用设置页那份（地址补 /chat/com
   assert.deepEqual(await mm.prepare('a'), { text: '' });
   assert.equal(made.length, 2, '地址过不了检查就不发');
 });
+
+test('线索：没线索的、改过的才问；私人念想不发；只收四种、每条 30 字、最多 4 条；空的也记下不再问；召回能凭线索找到', async () => {
+  const { s, clock, mm, asked } = fresh({ answer: (k, p) => {
+    if (k !== 'cue') return '[]';
+    const ids = [...p.matchAll(/"id":"([^"]+)"/g)].map((x) => x[1]);
+    return JSON.stringify(ids.map((id) => ({ id, cues: [{ k: '处境', text: '她加班到很晚，在地铁上' }, { k: '乱写', text: '不收' }, { k: '问法', text: '长'.repeat(40) }, { k: '细节', text: 'a' }, { k: '未完', text: 'b' }, { k: '细节', text: 'c' }] })));
+  } });
+  mm.set('a', ON);
+  const n1 = s.add('a', { kind: 'note', text: '她说想换一份不用加班的工作' }, 'ai');
+  const w = s.add('a', { kind: 'wish', text: '私人的念想', priv: true }, 'ai');
+  assert.equal(await mm.cues('a'), 1);
+  assert.ok(!asked.some((x) => x.prompt.includes(w.id) || x.prompt.includes('私人的念想')));
+  const c = s.load('a').items.find((m) => m.id === n1.id).cues;
+  assert.deepEqual(c.list.map((x) => x.k), ['处境', '问法', '细节', '未完']);
+  assert.equal([...c.list[1].text].length, 30);
+  // 问过了不再问；改过正文再问
+  asked.length = 0;
+  assert.equal(await mm.cues('a'), 0);
+  assert.equal(asked.length, 0);
+  clock.t += 60e3;
+  s.patch('a', n1.id, { text: '她说想换一份不用加班的工作，在看招聘' }, { who: 'ai' });
+  assert.equal(await mm.cues('a'), 1);
+  // 召回：她说「地铁上」，正文里没有，靠线索找到
+  const got = s.recall('a', '晚上还在地铁上');
+  assert.ok(got.some((m) => m.id === n1.id));
+  // 没打开：不跑
+  mm.set('a', { on: false });
+  asked.length = 0; s.add('a', { kind: 'note', text: '新的一条' }, 'ai');
+  assert.equal(await mm.cues('a'), 0);
+  assert.equal(asked.length, 0);
+});
+
+test('线索也走公开版的检查：地址查不过就不发，记忆原文不出门', async () => {
+  const { s } = fresh();
+  const bad = makeSlotGuard({ net: { okSync() {}, async check() { throw Object.assign(new Error('地址指向局域网'), { safe: true }); } }, keyOrigins: 'SF_KEY=https://api.example.com' });
+  let sent = 0;
+  const mm = makeMemModel({ store: s, tz: TZ, runnerOf: () => async () => { sent++; return '[]'; }, keyOf: () => 'k-123', guard: bad });
+  mm.set('a', ON);
+  s.add('a', { kind: 'note', text: '一条要补线索的记忆' }, 'ai');
+  assert.equal(await mm.cues('a'), 0);
+  assert.equal(sent, 0);
+  assert.equal(s.load('a').items[0].cues, undefined);
+});

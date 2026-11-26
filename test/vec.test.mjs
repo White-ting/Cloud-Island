@@ -203,3 +203,20 @@ test('列表带向量的状态：没配是 off（网页据此提醒她去配）�
     v.close();
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('线索的向量：有线索多算一份，召回能凭线索的意思找到；没线索的旧向量不重算', async () => {
+  const f = await fakeEmbed();
+  const { s, vec, dir } = fresh(f.url);
+  try {
+    const plain = s.add('a', { text: '她说周末想去海边走走' });
+    const m = s.add('a', { text: '她下班路上买了一把新的' });
+    await vec.idle();
+    const before = vecFile(dir)[plain.id].h;
+    s.setCues('a', new Map([[m.id, [{ k: '处境', text: '那天在下雨' }]]]));
+    await vec.idle();
+    const vf = vecFile(dir);
+    assert.ok(vf[m.id].c && !vf[plain.id].c);
+    assert.equal(vf[plain.id].h, before); // 没线索的不动
+    assert.deepEqual((await s.recallAsync('a', '雨停了没')).map((x) => x.id), [m.id]);
+  } finally { vec.close(); await f.close(); }
+});
