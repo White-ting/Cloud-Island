@@ -302,7 +302,7 @@ test('地址：夜里的设置（默认整理开、写梦关、03:00、上限）
     return { code: r.status, body: await r.json() };
   };
   try {
-    assert.deepEqual((await call('GET', '/api/night/a')).body, { at: '03:00', tidy: true, dream: false, pinMax: 1500, nightAsk: 3, runner: 'fake', last: null }); // 11-16 起整理默认开
+    assert.deepEqual((await call('GET', '/api/night/a')).body, { at: '03:00', tidy: true, dream: false, pinMax: 1500, nightAsk: 3, runner: 'fake', last: null }); // 整理默认开
     let r = await call('PUT', '/api/night/a', { at: '04:30', tidy: false, dream: true, pinMax: 2000, nightAsk: 2 });
     assert.deepEqual([r.body.at, r.body.tidy, r.body.dream, r.body.pinMax, r.body.nightAsk], ['04:30', false, true, 2000, 2]);
     assert.equal((await call('PUT', '/api/night/a', { at: '25:00' })).code, 400);
@@ -424,4 +424,26 @@ test('山的理由和名字像私人的不留（山照抬）；像私人的问�
   assert.deepEqual(asks.map((a) => !!a.priv), [true, false]);
   assert.equal(T.privDropped, 2);
   assert.equal(s.load('a').nightNews.tidy.privDropped, 2);
+});
+
+test('转成问话的整句查（理由里抄私人的也标 priv）；改的理由像私人的不存；「公开的」只算这晚给模型看过的；提示词写明她看得到', async () => {
+  const { s, night, fake, clock } = fresh();
+  s.add('a', { kind: 'wish', text: '想偷偷给她写一封很长的信放进她包里', priv: true }, 'ai');
+  clock.t -= 3 * 864e5;
+  s.add('a', { kind: 'note', text: '她说过以后想偷偷给她写一封很长的信放进她包里的人会很浪漫' }, 'ai'); // 三天前的、公开的，但今晚没给模型看
+  clock.t += 3 * 864e5;
+  const v = s.add('a', { kind: 'view', text: '她喜欢被人提前告知安排' }, 'ai');
+  const n = s.add('a', { kind: 'note', text: '她今天加班到很晚' }, 'ai');
+  fake.reply = JSON.stringify({
+    fix: [{ id: v.id, text: '她喜欢别人提前告诉她安排', why: '我想偷偷给她写一封很长的信放进她包里' }, { id: n.id, text: '她今天加班到十点', why: '我想偷偷给她写一封很长的信放进她包里' }],
+    add: [{ kind: 'note', text: '我想偷偷给她写一封很长的信放进她包里', quote: '嗯' }],
+  });
+  const T = (await night.run('a', { tidy: true })).tidy;
+  const ask = s.load('a').nightAsk.find((a) => a.about === v.id);
+  assert.equal(ask.priv, true);
+  const nn = s.load('a').items.find((m) => m.id === n.id);
+  assert.equal(nn.text, '她今天加班到十点');
+  assert.equal(nn.hist.at(-1).fix, '');
+  assert.equal(T.added || 0, 0, '老的公开记忆今晚没给模型看，不能拿来减');
+  assert.ok(TIDY_PROMPT.includes('你写出来的这些她都看得到'));
 });

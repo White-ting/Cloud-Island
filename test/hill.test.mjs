@@ -61,9 +61,9 @@ test('被想起：记下那天不算；之后在 3 个不同的日子想起过�
 
 test('连回：后来三条连回它，第二天第一句话时成山（当天不重算）；那三条归档后再算，高度不降', () => {
   const { s, clock } = fresh();
-  const m = s.add('a', { text: '随想删了' });
+  const m = s.add('a', { text: '她搬家了' });
   s.tick('a');
-  const kids = ['审稿换人', 'sol 停用', '退款到账'].map((text) => s.add('a', { text, from: [m.id] }, 'ai'));
+  const kids = ['找到新房子', '退了旧房', '网络装好了'].map((text) => s.add('a', { text, from: [m.id] }, 'ai'));
   s.tick('a');
   assert.equal(get(s, m.id).h, undefined);
   clock.t += DAY; s.tick('a');

@@ -254,31 +254,44 @@ test('线索回得不对：不是数组就不记，这一批下次再问', async
   assert.equal(s.load('a').items[0].cues, undefined);
 });
 
-test('回的编号一个都对不上不算问过；一批出错别的批照样存；没问成的先跳过、连着 3 次就记成问过了', async () => {
-  const twenty = (g) => { const xs = []; for (let i = 0; i < 20; i++) { g.clock.t += 1000; xs.push(g.s.add('a', { kind: 'note', text: `第 ${i} 条记忆` }, 'ai')); } return xs; }; // 一条比一条新
-  // 编号全对不上：一条都不记，下回（跳过时间过了）还问
-  const A = fresh({ answer: (k) => (k === 'cue' ? JSON.stringify([{ id: 'nope', cues: [{ k: '处境', text: 'x' }] }]) : '[]') });
-  A.mm.set('a', ON); twenty(A);
-  assert.equal(await A.mm.cues('a'), 0);
-  assert.ok(A.s.load('a').items.every((m) => !m.cues));
-  // 第一批（新的 15 条）出错，第二批（5 条）照样存
-  let first = '';
-  const B = fresh({ answer: (k, p) => {
+test('线索：编号对不上不算问过；临时故障什么都不记；被拒的那批先待查、单个问出是哪条，别的照样补上；那条连着 3 次才不问', async () => {
+  const ask = (g, bad, opt = {}) => (k, p) => {
     if (k !== 'cue') return '[]';
     const ids = [...p.matchAll(/"id":"([^"]+)"/g)].map((x) => x[1]);
-    if (ids.includes(first)) throw Object.assign(new Error('400'), { safe: true });
+    if (opt.transient) throw Object.assign(new Error('401'), { safe: true, status: 401 });
+    if (ids.includes(bad())) throw Object.assign(new Error('400'), { safe: true, status: 400 });
     return JSON.stringify(ids.map((id) => ({ id, cues: [{ k: '处境', text: '在家' }] })));
-  } });
-  B.mm.set('a', ON); first = twenty(B).at(-1).id; // 新的先问：最新那条在第一批
-  assert.equal(await B.mm.cues('a'), 5);
-  assert.equal(B.s.load('a').items.filter((m) => m.cues).length, 5);
-  // 没问成的先跳过：下回先问别的（这里别的都问过了，就没有要问的）
-  assert.equal(await B.mm.cues('a'), 0);
-  // 跳过时间设成 0：同一批连着 3 次没问成，记成问过了、没线索
-  const C = fresh({ limits: { cueSkip: 0 }, answer: (k) => { if (k === 'cue') throw Object.assign(new Error('400'), { safe: true }); return '[]'; } });
-  C.mm.set('a', ON); C.s.add('a', { kind: 'note', text: '一条老问不成的' }, 'ai');
+  };
+  const add20 = (g) => { const xs = []; for (let i = 0; i < 20; i++) { g.clock.t += 1000; xs.push(g.s.add('a', { kind: 'note', text: `第 ${i} 条记忆` }, 'ai')); } return xs; };
+  const withCues = (g) => g.s.load('a').items.filter((m) => m.cues).length;
+  // 编号全对不上：一条都不记
+  const A = fresh({ answer: (k) => (k === 'cue' ? JSON.stringify([{ id: 'nope', cues: [{ k: '处境', text: 'x' }] }]) : '[]') });
+  A.mm.set('a', ON); add20(A);
+  assert.equal(await A.mm.cues('a'), 0);
+  assert.equal(withCues(A), 0);
+  // 临时故障（401）：两回都不记，修好以后照样全补上（没被记成「问过了」）
+  let broken = true, badId = '';
+  const C = fresh({ answer: (k, p) => ask(null, () => badId, { transient: broken })(k, p) });
+  C.mm.set('a', ON); add20(C);
   await C.mm.cues('a'); await C.mm.cues('a');
-  assert.equal(C.s.load('a').items[0].cues, undefined);
+  assert.equal(withCues(C), 0);
+  broken = false;
   await C.mm.cues('a');
-  assert.deepEqual(C.s.load('a').items[0].cues.list, []);
+  assert.equal(withCues(C), 20);
+  // 最新那条的内容被拒（400）：第一回那批 15 条都待查、另 5 条补上；之后待查的单个问，好的都补上，只剩那条
+  let first = '';
+  const B = fresh({ answer: (k, p) => ask(null, () => first)(k, p) });
+  B.mm.set('a', ON); first = add20(B).at(-1).id;
+  assert.equal(await B.mm.cues('a'), 5);
+  for (let i = 0; i < 4; i++) await B.mm.cues('a');
+  assert.equal(withCues(B), 19);
+  assert.ok(!B.s.load('a').items.find((m) => m.id === first).cues);
+  // 那条连着 3 次单独问不成（每回别的都问成了）：记成问过了、没线索（跳过时间设 0 好测）
+  let bad = '';
+  const D = fresh({ limits: { cueSkip: 0 }, answer: (k, p) => ask(null, () => bad)(k, p) });
+  D.mm.set('a', ON);
+  bad = D.s.add('a', { kind: 'note', text: '一条老被拒的' }, 'ai').id;
+  for (let i = 0; i < 5; i++) { D.clock.t += 1000; D.s.add('a', { kind: 'note', text: `好的 ${i}` }, 'ai'); await D.mm.cues('a'); }
+  assert.deepEqual(D.s.load('a').items.find((m) => m.id === bad).cues?.list, []);
+  assert.equal(withCues(D), 6);
 });

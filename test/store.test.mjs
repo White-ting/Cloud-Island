@@ -369,3 +369,19 @@ test('from/ppl 写成字串、text 不是字串：读的时候整理好当场写
   // 导入：text 不是字串的不收
   assert.equal(s.importAll('c', { items: [{ id: 'z1', kind: 'note', text: 42 }, { id: 'z2', kind: 'note', text: '好的', from: 'z1' }] }).added, 1);
 });
+
+test('读的时候要整理格式、但写不回去（目录只读）：照样读得出来，下次再写', () => {
+  const { s, dir } = fresh();
+  s.add('a', { text: '她养了一只猫叫团子' }, 'ai');
+  const f = path.join(dir, 'a', 'mem.json');
+  const raw = JSON.parse(fs.readFileSync(f, 'utf8'));
+  raw.items.push({ id: 'kfrom', t: 2, by: 'ai', kind: 'note', text: '团子打喷嚏', from: 'x' });
+  fs.writeFileSync(f, JSON.stringify(raw));
+  fs.chmodSync(path.join(dir, 'a'), 0o500);
+  try {
+    assert.doesNotThrow(() => s.list('a', { who: 'ai' }));
+    assert.deepEqual(s.load('a').items.find((m) => m.id === 'kfrom').from, ['x']);
+  } finally { fs.chmodSync(path.join(dir, 'a'), 0o700); }
+  s.load('a');
+  assert.deepEqual(JSON.parse(fs.readFileSync(f, 'utf8')).items.find((m) => m.id === 'kfrom').from, ['x']);
+});

@@ -417,7 +417,7 @@ test('读一条：全文 + 连着的几条；读的这条算用到一次，连�
   assert.throws(() => h.read('a', 'nope'), (e) => e.code === 404);
 });
 
-test('召回连线（审稿补）：专心模式下连着的念想不带也不计数；「连着 N 条」数全，超过 9 条也照实数', async () => {
+test('召回连线：专心模式下连着的念想不带也不计数；「连着 N 条」数全，超过 9 条也照实数', async () => {
   const { s, h, mid, w, c2 } = chain();
   const c = (await h.before('a', { text: '每周五给团子买罐头', focus: true })).context;
   assert.ok(!c.includes(w.id), '专心模式不带念想');
@@ -426,7 +426,7 @@ test('召回连线（审稿补）：专心模式下连着的念想不带也不�
   assert.ok((await h.before('a', { text: '周五买罐头吧' })).context.includes('（连着 14 条）'));
 });
 
-test('读一条（审稿补）：读念想放进这一轮的候选，接着说到它就算想起一次；读别的不放；不多算一轮', () => {
+test('读一条：读念想放进这一轮的候选，接着说到它就算想起一次；读别的不放；不多算一轮', () => {
   const { s, h, mid, w } = chain();
   const r0 = s.load('a').sess?.rounds;
   h.read('a', mid.id);
@@ -550,4 +550,30 @@ test('一轮好几段回复（先说一句再调工具）联想以最后一次�
   await new Promise((r) => setTimeout(r, 30));
   const ids = (s.load('a').calls || []).map((x) => x.id);
   assert.ok(ids.includes(old.id) && ids.includes(trip.id), '用的是这一轮攒下的全部回复');
+});
+
+test('联想用这一轮回复的尾巴（第一段很长也不耽误后面）；新的一轮开始，上一轮没备完的那次作废', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ta-')); dirs.push(dir);
+  const clock = { t: Date.UTC(2026, 10, 15, 4) }, now = () => clock.t;
+  const s = openStore({ dir, tz: 'Asia/Shanghai', now, rand: () => 0, recallCfg: { callAt: 0.1 } }), h = makeHooks({ store: s, tz: 'Asia/Shanghai' });
+  const old = s.add('a', { kind: 'note', text: '她十月说过想学做红烧肉，要找周末试' }, 'ai');
+  const trip = s.add('a', { kind: 'note', text: '她下个月要去杭州出差三天' }, 'ai');
+  clock.t += 60e3;
+  await h.before('a', { text: '在吗' });
+  h.after('a', { reply: '嗯嗯'.repeat(700) + '。' }); // 第一段 1400 字
+  h.after('a', { reply: '要不试试红烧肉，你之前说想学做红烧肉，周末试一下' });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok((s.load('a').calls || []).some((x) => x.id === old.id));
+  // 上一轮备得慢（等向量），新的一轮已经开始：那次的结果不写
+  const orig = s.prepCalls;
+  let slow = true;
+  s.prepCalls = (...a) => { if (!slow) return orig(...a); slow = false; return new Promise((r) => setTimeout(r, 40)).then(() => orig(...a)); };
+  clock.t += 60e3;
+  await h.before('a', { text: '出差的事' });
+  h.after('a', { reply: '你下个月去杭州出差三天，要提前准备吗' }); // 这次慢
+  clock.t += 60e3;
+  await h.before('a', { text: '算了不说这个' }); // 新一轮开始
+  await new Promise((r) => setTimeout(r, 80));
+  assert.ok(!(s.load('a').calls || []).some((x) => x.id === trip.id), '上一轮慢的那次作废了');
+  s.prepCalls = orig;
 });
