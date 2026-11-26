@@ -362,10 +362,24 @@ test('整理新记：只收记事/看法/经验、要带原话、不收重复和
   const items = s.load('a').items;
   assert.ok(items.some((m) => m.text === '跑模型时 TA 又记的'));
   const v = items.find((m) => m.text === '她喜欢一步一步来');
-  assert.deepEqual([v.kind, v.by, v.src, v.kw, v.ppl], ['view', 'ai', 'night', ['认知'], ['她']]);
-  assert.ok(v.why.includes('先说清楚再做'));
+  assert.deepEqual([v.kind, v.by, v.src, v.kw, v.ppl], ['view', 'ai', 'night', undefined, ['她']]); // 类别写进 why，不进 kw
+  assert.ok(v.why.includes('先说清楚再做') && v.why.includes('（认知）'));
   assert.equal(items.find((m) => m.text.startsWith('类别乱写')).kw, undefined);
   assert.ok(!items.some((m) => m.text === '念想不收' || m.text === '没有原话的不收' || m.text === long));
   assert.equal(items.filter((m) => m.text === '已经有的一条').length, 1);
   assert.equal(s.load('a').nightNews.tidy.added, 8);
+});
+
+test('整理新记挡私人念想：跟私人念想太像的不收，别的照收', async () => {
+  const { s, night, fake } = fresh();
+  s.add('a', { kind: 'wish', text: '想偷偷给她写一封很长的信，在她生日那天放进她包里', priv: true }, 'ai');
+  fake.reply = () => JSON.stringify({ add: [
+    { cat: '感情', kind: 'note', text: '我想偷偷给她写一封很长的信，生日那天放进她包里', quote: '想给她写信' },
+    { cat: '事件', kind: 'note', text: '她今天第一次自己部署成功', quote: '我自己弄好了' },
+  ] });
+  const T = (await night.run('a', { tidy: true })).tidy;
+  assert.equal(T.added, 1);
+  const items = s.load('a').items;
+  assert.ok(items.some((m) => m.text === '她今天第一次自己部署成功'));
+  assert.ok(!items.some((m) => !m.priv && m.text.includes('写一封很长的信')));
 });

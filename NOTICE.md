@@ -24,3 +24,13 @@ lib/vec.mjs 的向量召回和 lib/store.mjs 里召回打分那段，思路改�
 - 版权声明：Copyright (c) 2026 P0lar1zzZ
 
 这里是用 JavaScript 重写的，没有拷原来的代码。改了的地方：相不相关和新不新分开算（相关性只决定进不进，新旧只用来排序）；不自动归档、不删、不改档位；不调外部模型判断要不要合并。
+
+## Callback_DLC（召回里的冷却、线索、联想、打算和结果分开）
+
+v1.4 起 lib/store.mjs、lib/hooks.mjs、lib/memmodel.mjs 里的冷却（说到了才算用上、用过的歇几轮）、写入时留线索、聊完顺手联想一件、打算和结果分开，思路来自 Callback_DLC：
+
+- 项目：Callback_DLC（https://github.com/KKarsyline/Callback_DLC）
+- 作者：KKarsyline
+- 许可：PolyForm Noncommercial
+
+只借了思路，是用 JavaScript 按云岛自己的记忆库重写的，没有拷原来的代码。轮数、门槛这些数是云岛自己定的。

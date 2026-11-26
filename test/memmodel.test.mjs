@@ -230,3 +230,26 @@ test('线索也走公开版的检查：地址查不过就不发，记忆原文�
   assert.equal(sent, 0);
   assert.equal(s.load('a').items[0].cues, undefined);
 });
+
+test('线索漏答：模型只回了一部分，没回的也记下问过了，下次不重问', async () => {
+  const { s, mm, asked } = fresh({ answer: (k, p) => {
+    if (k !== 'cue') return '[]';
+    const id = [...p.matchAll(/"id":"([^"]+)"/g)][0][1];
+    return JSON.stringify([{ id, cues: [{ k: '处境', text: '在地铁上' }] }]);
+  } });
+  mm.set('a', ON);
+  for (let i = 0; i < 3; i++) s.add('a', { kind: 'note', text: `第 ${i} 条记忆` }, 'ai');
+  await mm.cues('a');
+  assert.ok(s.load('a').items.every((m) => m.cues && m.cues.at));
+  asked.length = 0;
+  assert.equal(await mm.cues('a'), 0);
+  assert.equal(asked.length, 0);
+});
+
+test('线索回得不对：不是数组就不记，这一批下次再问', async () => {
+  const { s, mm } = fresh({ answer: (k) => (k === 'cue' ? '我不知道' : '[]') });
+  mm.set('a', ON);
+  s.add('a', { kind: 'note', text: '一条' }, 'ai');
+  assert.equal(await mm.cues('a'), 0);
+  assert.equal(s.load('a').items[0].cues, undefined);
+});

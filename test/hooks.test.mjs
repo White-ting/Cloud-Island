@@ -505,3 +505,20 @@ test('应声不召回：ok、好、1 不递想起来的；两个字的名字照�
   for (const t of ['ok', '好的。', '1', '嗯嗯']) assert.ok(!(await h.before('a', { text: t })).context.includes('想起来的'), t);
   assert.ok((await h.before('a', { text: '团子' })).context.includes('想起来的'));
 });
+
+test('冷却轮数：说到了的正好歇 6 轮，第 7 轮回来；没有 before 的 after（TA 自己开口、网关一轮调好几次）不多数「没说到」；没递出去的不记被用到', async () => {
+  const { s, h, clock } = fresh();
+  const a = s.add('a', { kind: 'note', text: '她喜欢在雨天听黑胶唱片' }, 'ai');
+  const ask = async (t) => { clock.t += 60e3; return (await h.before('a', { text: t })).context; };
+  await ask('雨天听唱片'); h.after('a', { reply: `嗯，你喜欢雨天听黑胶唱片 [${a.id}]` });
+  for (let i = 1; i <= 6; i++) { const c = await ask('雨天听唱片'); assert.ok(!c.includes(a.id), `第 ${i} 轮还该歇着`); h.after('a', { reply: '好' }); }
+  assert.ok((await ask('雨天听唱片')).includes(a.id), '第 7 轮回来');
+  // 没说到：一轮只数一次。递了一次以后来三次没有 before 的 after，不该进冷却
+  h.after('a', { reply: '好' }); h.after('a', { reply: '嗯' }); h.after('a', { reply: '嗯' }); h.after('a', { reply: '嗯' });
+  assert.ok((await ask('雨天听唱片')).includes(a.id), '没有 before 的 after 不算轮');
+  // 没递出去的不记被用到：歇着的那条不长 used
+  h.after('a', { reply: `说到了 [${a.id}]` });
+  const u0 = s.load('a').items.find((m) => m.id === a.id).used || 0;
+  await ask('雨天听唱片'); h.after('a', { reply: '好' }); s.flush?.();
+  assert.equal(s.load('a').items.find((m) => m.id === a.id).used || 0, u0);
+});

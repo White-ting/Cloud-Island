@@ -30,7 +30,7 @@ import { openPush } from './lib/push.mjs';
 import { makeHelper, makeSlotGuard } from './lib/helper.mjs';
 import { makeNet } from './lib/net.mjs';
 
-export const VERSION = '1.4.0';
+export const VERSION = '1.4.1';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 export function loadConfig(baseDir = here, env = process.env) {
