@@ -1557,7 +1557,12 @@ function msgEl(m, opt) {
   if (!opt.empty) fill(col, m);
   return e;
 }
-const down = () => { log.scrollTop = log.scrollHeight; };
+// 聊天里的图片是画完、滚到底以后才下载完的，会把内容撑高、让聊天记录跑位。
+// 贴着底看的（离底不到 80 像素），每载完一张就再贴一次底；往上翻着看的不管，WebKit 自己会按看着的那条留住位置（再手动拉一次反而打架）。
+let logStick = true;
+const down = () => { log.scrollTop = log.scrollHeight; logStick = true; };
+log.addEventListener('scroll', () => { logStick = log.scrollHeight - log.scrollTop - log.clientHeight < 80; }, { passive: true });
+log.addEventListener('load', (e) => { if (e.target.tagName === 'IMG' && logStick) down(); }, true);   // load 不冒泡，捕获阶段才收得到聊天里每张图的
 const callEl = (c) => el('div', 'day callrec', '☏ 通话 ' + c.call);
 // 运行过的卡片/组件：聊天里只留一行「运行了 xxx」，点一下展开当时的过程（log：[{who, text}]）
 function runEl(m) {
